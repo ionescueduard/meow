@@ -3,9 +3,13 @@ import '../models/user_model.dart';
 import '../models/cat_model.dart';
 import '../models/post_model.dart';
 import '../models/comment_model.dart';
+import 'notification_service.dart';
 
 class FirestoreService {
   final FirebaseFirestore _db = FirebaseFirestore.instance;
+  final NotificationService _notificationService;
+
+  FirestoreService(this._notificationService);
 
   // Users
   Future<void> saveUser(UserModel user) async {
@@ -120,7 +124,21 @@ class FirestoreService {
 
   // Comments
   Future<void> addComment(CommentModel comment) async {
-    await _db.collection('comments').add(comment.toMap());
+    final doc = await _db.collection('comments').add(comment.toMap());
+    
+    // Get the post and commenter info
+    final post = await getPost(comment.postId);
+    final commenter = await getUser(comment.userId);
+    
+    if (post != null && commenter != null && post.userId != comment.userId) {
+      await _notificationService.sendCommentNotification(
+        userId: post.userId,
+        postId: comment.postId,
+        commentId: doc.id,
+        commenter: commenter,
+        commentText: comment.text,
+      );
+    }
   }
 
   Stream<List<CommentModel>> getPostComments(String postId) {
@@ -140,19 +158,28 @@ class FirestoreService {
 
   // Following/Followers
   Future<void> followUser(String userId, String followerId) async {
-    await _db
-        .collection('users')
-        .doc(userId)
-        .collection('followers')
-        .doc(followerId)
-        .set({'timestamp': FieldValue.serverTimestamp()});
+    final batch = _db.batch();
 
-    await _db
-        .collection('users')
-        .doc(followerId)
-        .collection('following')
-        .doc(userId)
-        .set({'timestamp': FieldValue.serverTimestamp()});
+    batch.set(
+      _db.collection('users').doc(userId).collection('followers').doc(followerId),
+      {'timestamp': FieldValue.serverTimestamp()},
+    );
+
+    batch.set(
+      _db.collection('users').doc(followerId).collection('following').doc(userId),
+      {'timestamp': FieldValue.serverTimestamp()},
+    );
+
+    await batch.commit();
+
+    // Send notification
+    final follower = await getUser(followerId);
+    if (follower != null) {
+      await _notificationService.sendFollowNotification(
+        userId: userId,
+        follower: follower,
+      );
+    }
   }
 
   Future<void> unfollowUser(String userId, String followerId) async {
@@ -215,5 +242,39 @@ class FirestoreService {
       }
       return following;
     });
+  }
+
+  Future<void> likePost(String postId, String userId) async {
+    final post = await getPost(postId);
+    if (post == null) return;
+
+    final updatedPost = post.copyWith(
+      likes: List.from(post.likes)..add(userId),
+    );
+
+    await savePost(updatedPost);
+
+    // Send notification if the post is not by the liker
+    if (post.userId != userId) {
+      final liker = await getUser(userId);
+      if (liker != null) {
+        await _notificationService.sendLikeNotification(
+          userId: post.userId,
+          postId: postId,
+          liker: liker,
+        );
+      }
+    }
+  }
+
+  Future<void> unlikePost(String postId, String userId) async {
+    final post = await getPost(postId);
+    if (post == null) return;
+
+    final updatedPost = post.copyWith(
+      likes: List.from(post.likes)..remove(userId),
+    );
+
+    await savePost(updatedPost);
   }
 } 

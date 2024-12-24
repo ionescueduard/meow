@@ -90,20 +90,37 @@ class FeedScreen extends StatelessWidget {
                       author: author,
                       isLiked: post.likes.contains(currentUser?.uid),
                       onLike: () async {
-                        if (currentUser == null) return;
-
-                        final updatedPost = post.copyWith(
-                          likes: List.from(post.likes)
-                            ..removeWhere((id) => id == currentUser.uid),
-                        );
-
-                        if (!post.likes.contains(currentUser.uid)) {
-                          updatedPost.likes.add(currentUser.uid);
+                        if (currentUser == null) {
+                          ScaffoldMessenger.of(context).showSnackBar(
+                            const SnackBar(
+                              content: Text('Please sign in to like posts'),
+                            ),
+                          );
+                          return;
                         }
 
-                        await firestoreService.updatePost(updatedPost);
+                        if (post.likes.contains(currentUser.uid)) {
+                          await firestoreService.unlikePost(
+                            post.id,
+                            currentUser.uid,
+                          );
+                        } else {
+                          await firestoreService.likePost(
+                            post.id,
+                            currentUser.uid,
+                          );
+                        }
                       },
                       onComment: () {
+                        if (currentUser == null) {
+                          ScaffoldMessenger.of(context).showSnackBar(
+                            const SnackBar(
+                              content: Text('Please sign in to comment'),
+                            ),
+                          );
+                          return;
+                        }
+
                         Navigator.push(
                           context,
                           MaterialPageRoute(
