@@ -1,98 +1,70 @@
+import 'package:cloud_firestore/cloud_firestore.dart';
+
 class PostModel {
   final String id;
   final String userId;
-  final String? catId;
   final String content;
-  List<String> mediaUrls;
-  List<String> likes;
-  Map<String, String> comments; // key: commentId, value: comment content
-  DateTime createdAt;
-  DateTime updatedAt;
+  final List<String> imageUrls;
+  final List<String> catIds;
+  final List<String> likes;
+  final DateTime createdAt;
+  final DateTime updatedAt;
 
   PostModel({
     required this.id,
     required this.userId,
-    this.catId,
     required this.content,
-    List<String>? mediaUrls,
-    List<String>? likes,
-    Map<String, String>? comments,
-    DateTime? createdAt,
-    DateTime? updatedAt,
-  })  : mediaUrls = mediaUrls ?? [],
-        likes = likes ?? [],
-        comments = comments ?? {},
-        createdAt = createdAt ?? DateTime.now(),
-        updatedAt = updatedAt ?? DateTime.now();
+    required this.imageUrls,
+    required this.catIds,
+    required this.likes,
+    required this.createdAt,
+    required this.updatedAt,
+  });
+
+  factory PostModel.fromMap(Map<String, dynamic> map, String id) {
+    return PostModel(
+      id: id,
+      userId: map['userId'] as String,
+      content: map['content'] as String,
+      imageUrls: List<String>.from(map['imageUrls'] as List),
+      catIds: List<String>.from(map['catIds'] as List),
+      likes: List<String>.from(map['likes'] as List),
+      createdAt: (map['createdAt'] as Timestamp).toDate(),
+      updatedAt: (map['updatedAt'] as Timestamp).toDate(),
+    );
+  }
 
   Map<String, dynamic> toMap() {
     return {
-      'id': id,
       'userId': userId,
-      'catId': catId,
       'content': content,
-      'mediaUrls': mediaUrls,
+      'imageUrls': imageUrls,
+      'catIds': catIds,
       'likes': likes,
-      'comments': comments,
-      'createdAt': createdAt.toIso8601String(),
-      'updatedAt': updatedAt.toIso8601String(),
+      'createdAt': Timestamp.fromDate(createdAt),
+      'updatedAt': Timestamp.fromDate(updatedAt),
     };
   }
 
-  factory PostModel.fromMap(Map<String, dynamic> map) {
-    return PostModel(
-      id: map['id'] as String,
-      userId: map['userId'] as String,
-      catId: map['catId'] as String?,
-      content: map['content'] as String,
-      mediaUrls: List<String>.from(map['mediaUrls'] ?? []),
-      likes: List<String>.from(map['likes'] ?? []),
-      comments: Map<String, String>.from(map['comments'] ?? {}),
-      createdAt: DateTime.parse(map['createdAt'] as String),
-      updatedAt: DateTime.parse(map['updatedAt'] as String),
-    );
-  }
-
   PostModel copyWith({
+    String? id,
+    String? userId,
     String? content,
-    List<String>? mediaUrls,
+    List<String>? imageUrls,
+    List<String>? catIds,
     List<String>? likes,
-    Map<String, String>? comments,
+    DateTime? createdAt,
+    DateTime? updatedAt,
   }) {
     return PostModel(
-      id: id,
-      userId: userId,
-      catId: catId,
+      id: id ?? this.id,
+      userId: userId ?? this.userId,
       content: content ?? this.content,
-      mediaUrls: mediaUrls ?? this.mediaUrls,
+      imageUrls: imageUrls ?? this.imageUrls,
+      catIds: catIds ?? this.catIds,
       likes: likes ?? this.likes,
-      comments: comments ?? this.comments,
-      createdAt: createdAt,
-      updatedAt: DateTime.now(),
+      createdAt: createdAt ?? this.createdAt,
+      updatedAt: updatedAt ?? this.updatedAt,
     );
-  }
-
-  void addLike(String userId) {
-    if (!likes.contains(userId)) {
-      likes.add(userId);
-      updatedAt = DateTime.now();
-    }
-  }
-
-  void removeLike(String userId) {
-    if (likes.remove(userId)) {
-      updatedAt = DateTime.now();
-    }
-  }
-
-  void addComment(String commentId, String content) {
-    comments[commentId] = content;
-    updatedAt = DateTime.now();
-  }
-
-  void removeComment(String commentId) {
-    if (comments.remove(commentId) != null) {
-      updatedAt = DateTime.now();
-    }
   }
 } 
