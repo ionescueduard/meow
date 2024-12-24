@@ -7,6 +7,8 @@ import '../../models/user_model.dart';
 import '../../services/auth_service.dart';
 import '../../services/firestore_service.dart';
 import '../../services/storage_service.dart';
+import '../../screens/cat/edit_cat_screen.dart';
+import '../../screens/cat/cat_details_screen.dart';
 
 class ProfileScreen extends StatefulWidget {
   const ProfileScreen({super.key});
@@ -79,6 +81,24 @@ class _ProfileScreenState extends State<ProfileScreen> {
     } finally {
       setState(() => _isLoading = false);
     }
+  }
+
+  void _navigateToAddCat(BuildContext context) {
+    Navigator.push(
+      context,
+      MaterialPageRoute(
+        builder: (context) => const EditCatScreen(),
+      ),
+    );
+  }
+
+  void _navigateToCatDetails(BuildContext context, CatModel cat) {
+    Navigator.push(
+      context,
+      MaterialPageRoute(
+        builder: (context) => CatDetailsScreen(cat: cat),
+      ),
+    );
   }
 
   @override
@@ -246,9 +266,7 @@ class _ProfileScreenState extends State<ProfileScreen> {
                   TextButton.icon(
                     icon: const Icon(Icons.add),
                     label: const Text('Add Cat'),
-                    onPressed: () {
-                      // TODO: Navigate to add cat screen
-                    },
+                    onPressed: () => _navigateToAddCat(context),
                   ),
                 ],
               ),
@@ -301,9 +319,7 @@ class _ProfileScreenState extends State<ProfileScreen> {
                       return Card(
                         clipBehavior: Clip.antiAlias,
                         child: InkWell(
-                          onTap: () {
-                            // TODO: Navigate to cat details screen
-                          },
+                          onTap: () => _navigateToCatDetails(context, cat),
                           child: Column(
                             crossAxisAlignment: CrossAxisAlignment.start,
                             children: [

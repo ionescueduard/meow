@@ -4,6 +4,7 @@ import 'package:timeago/timeago.dart' as timeago;
 import '../models/post_model.dart';
 import '../models/user_model.dart';
 import '../services/firestore_service.dart';
+import '../services/auth_service.dart';
 
 class PostCard extends StatelessWidget {
   final PostModel post;
@@ -22,6 +23,88 @@ class PostCard extends StatelessWidget {
     this.onShare,
     this.isLiked = false,
   });
+
+  void _showOptionsMenu(BuildContext context) {
+    final currentUser = context.read<AuthService>().currentUser;
+    final isAuthor = currentUser?.uid == author.id;
+
+    showModalBottomSheet(
+      context: context,
+      builder: (context) {
+        return SafeArea(
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              if (isAuthor) ...[
+                ListTile(
+                  leading: const Icon(Icons.edit),
+                  title: const Text('Edit Post'),
+                  onTap: () {
+                    Navigator.pop(context);
+                    Navigator.push(
+                      context,
+                      MaterialPageRoute(
+                        builder: (context) => EditPostScreen(post: post),
+                      ),
+                    );
+                  },
+                ),
+                ListTile(
+                  leading: const Icon(Icons.delete),
+                  title: const Text('Delete Post'),
+                  onTap: () async {
+                    Navigator.pop(context);
+                    final confirm = await showDialog<bool>(
+                      context: context,
+                      builder: (context) => AlertDialog(
+                        title: const Text('Delete Post'),
+                        content: const Text('Are you sure you want to delete this post?'),
+                        actions: [
+                          TextButton(
+                            onPressed: () => Navigator.pop(context, false),
+                            child: const Text('Cancel'),
+                          ),
+                          TextButton(
+                            onPressed: () => Navigator.pop(context, true),
+                            child: const Text('Delete'),
+                          ),
+                        ],
+                      ),
+                    );
+
+                    if (confirm == true) {
+                      await context.read<FirestoreService>().deletePost(post.id);
+                    }
+                  },
+                ),
+              ],
+              ListTile(
+                leading: const Icon(Icons.share),
+                title: const Text('Share'),
+                onTap: () {
+                  Navigator.pop(context);
+                  onShare();
+                },
+              ),
+              ListTile(
+                leading: const Icon(Icons.report),
+                title: const Text('Report'),
+                onTap: () {
+                  Navigator.pop(context);
+                  // TODO: Implement report functionality
+                  ScaffoldMessenger.of(context).showSnackBar(
+                    const SnackBar(
+                      content: Text('Report feature coming soon!'),
+                    ),
+                  );
+                },
+              ),
+            ],
+          ),
+        );
+      },
+    );
+  }
 
   @override
   Widget build(BuildContext context) {
@@ -50,9 +133,7 @@ class PostCard extends StatelessWidget {
             ),
             trailing: IconButton(
               icon: const Icon(Icons.more_vert),
-              onPressed: () {
-                // TODO: Show post options menu
-              },
+              onPressed: () => _showOptionsMenu(context),
             ),
           ),
 

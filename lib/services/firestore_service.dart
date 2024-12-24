@@ -4,6 +4,7 @@ import '../models/cat_model.dart';
 import '../models/post_model.dart';
 import '../models/comment_model.dart';
 import 'notification_service.dart';
+import 'package:geolocator/geolocator.dart';
 
 class FirestoreService {
   final FirebaseFirestore _db = FirebaseFirestore.instance;
@@ -23,8 +24,11 @@ class FirestoreService {
   }
 
   Stream<UserModel?> getUserStream(String userId) {
-    return _db.collection('users').doc(userId).snapshots().map(
-        (doc) => doc.exists ? UserModel.fromMap(doc.data()!, doc.id) : null);
+    return _db
+        .collection('users')
+        .doc(userId)
+        .snapshots()
+        .map((doc) => doc.exists ? UserModel.fromMap(doc.data()!, doc.id) : null);
   }
 
   // Cats
@@ -55,9 +59,10 @@ class FirestoreService {
   Stream<List<CatModel>> searchCats({
     String? breed,
     String? gender,
-    bool? availableForBreeding,
+    Map<String, dynamic>? location,
   }) {
-    Query query = _db.collection('cats');
+    Query query = _db.collection('cats')
+        .where('availableForBreeding', isEqualTo: true);
 
     if (breed != null) {
       query = query.where('breed', isEqualTo: breed);
@@ -65,13 +70,35 @@ class FirestoreService {
     if (gender != null) {
       query = query.where('gender', isEqualTo: gender);
     }
-    if (availableForBreeding != null) {
-      query = query.where('availableForBreeding', isEqualTo: availableForBreeding);
-    }
 
-    return query.snapshots().map((snapshot) => snapshot.docs
-        .map((doc) => CatModel.fromMap(doc.data(), doc.id))
-        .toList());
+    return query.snapshots().map((snapshot) {
+      final cats = snapshot.docs
+          .map((doc) => CatModel.fromMap(doc.data(), doc.id))
+          .toList();
+
+      if (location != null) {
+        final userLat = location['latitude'] as double;
+        final userLng = location['longitude'] as double;
+        final maxDistance = location['maxDistance'] as double;
+
+        // Filter cats by distance
+        return cats.where((cat) {
+          if (cat.location == null) return false;
+
+          final distance = Geolocator.distanceBetween(
+            userLat,
+            userLng,
+            cat.location!.latitude,
+            cat.location!.longitude,
+          );
+
+          // Convert distance from meters to kilometers
+          return distance / 1000 <= maxDistance;
+        }).toList();
+      }
+
+      return cats;
+    });
   }
 
   // Posts
@@ -276,5 +303,15 @@ class FirestoreService {
     );
 
     await savePost(updatedPost);
+  }
+
+  Stream<List<CatModel>> getUserCatsStream(String userId) {
+    return _db
+        .collection('cats')
+        .where('userId', isEqualTo: userId)
+        .snapshots()
+        .map((snapshot) => snapshot.docs
+            .map((doc) => CatModel.fromMap(doc.data(), doc.id))
+            .toList());
   }
 } 

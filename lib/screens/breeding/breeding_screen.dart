@@ -3,6 +3,8 @@ import 'package:provider/provider.dart';
 import '../../models/cat_model.dart';
 import '../../models/user_model.dart';
 import '../../services/firestore_service.dart';
+import 'package:geolocator/geolocator.dart';
+import 'package:geocoding/geocoding.dart';
 
 class BreedingScreen extends StatefulWidget {
   const BreedingScreen({super.key});
@@ -12,9 +14,104 @@ class BreedingScreen extends StatefulWidget {
 }
 
 class _BreedingScreenState extends State<BreedingScreen> {
-  String? selectedBreed;
-  CatGender? selectedGender;
-  String? selectedLocation;
+  String? _selectedBreed;
+  String? _selectedGender;
+  String? _selectedLocation;
+  Position? _currentPosition;
+  double _maxDistance = 50.0; // km
+
+  @override
+  void initState() {
+    super.initState();
+    _getCurrentLocation();
+  }
+
+  Future<void> _getCurrentLocation() async {
+    final permission = await Geolocator.checkPermission();
+    if (permission == LocationPermission.denied) {
+      final result = await Geolocator.requestPermission();
+      if (result != LocationPermission.whileInUse && 
+          result != LocationPermission.always) {
+        return;
+      }
+    }
+
+    try {
+      final position = await Geolocator.getCurrentPosition();
+      setState(() {
+        _currentPosition = position;
+      });
+
+      // Get address from coordinates
+      final placemarks = await placemarkFromCoordinates(
+        position.latitude,
+        position.longitude,
+      );
+
+      if (placemarks.isNotEmpty) {
+        final place = placemarks.first;
+        setState(() {
+          _selectedLocation = '${place.locality}, ${place.administrativeArea}';
+        });
+      }
+    } catch (e) {
+      print('Error getting location: $e');
+    }
+  }
+
+  Widget _buildLocationFilter() {
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        ListTile(
+          title: const Text('Location'),
+          subtitle: Text(_selectedLocation ?? 'Not set'),
+          trailing: IconButton(
+            icon: const Icon(Icons.my_location),
+            onPressed: _getCurrentLocation,
+          ),
+        ),
+        Padding(
+          padding: const EdgeInsets.symmetric(horizontal: 16.0),
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Text(
+                'Maximum Distance: ${_maxDistance.round()} km',
+                style: Theme.of(context).textTheme.bodyMedium,
+              ),
+              Slider(
+                value: _maxDistance,
+                min: 5,
+                max: 500,
+                divisions: 99,
+                label: '${_maxDistance.round()} km',
+                onChanged: (value) {
+                  setState(() {
+                    _maxDistance = value;
+                  });
+                },
+              ),
+            ],
+          ),
+        ),
+      ],
+    );
+  }
+
+  Stream<List<CatModel>> _getFilteredCats() {
+    return context.read<FirestoreService>().searchCats(
+      breed: _selectedBreed,
+      gender: _selectedGender,
+      location: _currentPosition != null
+          ? {
+              'latitude': _currentPosition!.latitude,
+              'longitude': _currentPosition!.longitude,
+              'maxDistance': _maxDistance,
+            }
+          : null,
+    );
+  }
 
   @override
   Widget build(BuildContext context) {
@@ -29,7 +126,7 @@ class _BreedingScreenState extends State<BreedingScreen> {
             children: [
               // Breed filter
               DropdownButtonFormField<String>(
-                value: selectedBreed,
+                value: _selectedBreed,
                 decoration: const InputDecoration(
                   labelText: 'Breed',
                   prefixIcon: Icon(Icons.pets),
@@ -41,40 +138,30 @@ class _BreedingScreenState extends State<BreedingScreen> {
                   DropdownMenuItem(value: 'British Shorthair', child: Text('British Shorthair')),
                 ],
                 onChanged: (value) {
-                  setState(() => selectedBreed = value);
+                  setState(() => _selectedBreed = value);
                 },
               ),
               const SizedBox(height: 8),
 
               // Gender filter
-              DropdownButtonFormField<CatGender>(
-                value: selectedGender,
+              DropdownButtonFormField<String>(
+                value: _selectedGender,
                 decoration: const InputDecoration(
                   labelText: 'Gender',
                   prefixIcon: Icon(Icons.male),
                 ),
-                items: CatGender.values.map((gender) {
-                  return DropdownMenuItem(
-                    value: gender,
-                    child: Text(gender.toString().split('.').last),
-                  );
-                }).toList(),
+                items: const [
+                  DropdownMenuItem(value: 'Male', child: Text('Male')),
+                  DropdownMenuItem(value: 'Female', child: Text('Female')),
+                ],
                 onChanged: (value) {
-                  setState(() => selectedGender = value);
+                  setState(() => _selectedGender = value);
                 },
               ),
               const SizedBox(height: 8),
 
               // Location filter
-              TextFormField(
-                decoration: const InputDecoration(
-                  labelText: 'Location',
-                  prefixIcon: Icon(Icons.location_on),
-                ),
-                onChanged: (value) {
-                  setState(() => selectedLocation = value);
-                },
-              ),
+              _buildLocationFilter(),
             ],
           ),
         ),
@@ -82,7 +169,7 @@ class _BreedingScreenState extends State<BreedingScreen> {
         // Results
         Expanded(
           child: StreamBuilder<List<CatModel>>(
-            stream: firestoreService.getAvailableBreedingCats(),
+            stream: _getFilteredCats(),
             builder: (context, snapshot) {
               if (snapshot.connectionState == ConnectionState.waiting) {
                 return const Center(child: CircularProgressIndicator());
@@ -99,18 +186,6 @@ class _BreedingScreenState extends State<BreedingScreen> {
                 );
               }
 
-              // Apply filters
-              final filteredCats = cats.where((cat) {
-                if (selectedBreed != null && cat.breed != selectedBreed) {
-                  return false;
-                }
-                if (selectedGender != null && cat.gender != selectedGender) {
-                  return false;
-                }
-                // TODO: Implement location filtering
-                return true;
-              }).toList();
-
               return GridView.builder(
                 padding: const EdgeInsets.all(8),
                 gridDelegate: const SliverGridDelegateWithFixedCrossAxisCount(
@@ -119,9 +194,9 @@ class _BreedingScreenState extends State<BreedingScreen> {
                   crossAxisSpacing: 8,
                   mainAxisSpacing: 8,
                 ),
-                itemCount: filteredCats.length,
+                itemCount: cats.length,
                 itemBuilder: (context, index) {
-                  final cat = filteredCats[index];
+                  final cat = cats[index];
                   return _CatCard(cat: cat);
                 },
               );

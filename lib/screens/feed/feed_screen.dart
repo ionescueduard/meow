@@ -7,6 +7,7 @@ import '../../services/firestore_service.dart';
 import '../../widgets/post_card.dart';
 import '../post/edit_post_screen.dart';
 import '../post/post_comments_screen.dart';
+import 'package:share_plus/share_plus.dart';
 
 class FeedScreen extends StatelessWidget {
   const FeedScreen({super.key});
@@ -131,10 +132,14 @@ class FeedScreen extends StatelessWidget {
                           ),
                         );
                       },
-                      onShare: () {
-                        // TODO: Implement sharing functionality
-                        ScaffoldMessenger.of(context).showSnackBar(
-                          const SnackBar(content: Text('Sharing coming soon!')),
+                      onShare: () async {
+                        final message = 'Check out ${author.displayName}\'s post on Meow!\n\n'
+                            '${post.content}\n\n'
+                            'Download Meow to connect with cat lovers: [App Store/Play Store Link]';
+                        
+                        await Share.share(
+                          message,
+                          subject: 'Check out this post on Meow!',
                         );
                       },
                     );
