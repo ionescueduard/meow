@@ -221,7 +221,12 @@ class _CatCard extends StatelessWidget {
       clipBehavior: Clip.antiAlias,
       child: InkWell(
         onTap: () {
-          // TODO: Navigate to cat details screen
+          Navigator.push(
+            context,
+            MaterialPageRoute(
+              builder: (context) => CatDetailsScreen(cat: cat),
+            ),
+          );
         },
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,

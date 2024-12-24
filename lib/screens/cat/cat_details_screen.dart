@@ -4,6 +4,7 @@ import '../../models/cat_model.dart';
 import '../../models/user_model.dart';
 import '../../services/firestore_service.dart';
 import '../../services/auth_service.dart';
+import '../widgets/full_screen_image.dart';
 import 'edit_cat_screen.dart';
 
 class CatDetailsScreen extends StatelessWidget {
@@ -39,15 +40,28 @@ class CatDetailsScreen extends StatelessWidget {
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
-            if (cat.imageUrls.isNotEmpty)
+            if (cat.photoUrls.isNotEmpty)
               SizedBox(
                 height: 300,
                 child: PageView.builder(
-                  itemCount: cat.imageUrls.length,
+                  itemCount: cat.photoUrls.length,
                   itemBuilder: (context, index) {
-                    return Image.network(
-                      cat.imageUrls[index],
-                      fit: BoxFit.cover,
+                    return GestureDetector(
+                      onTap: () {
+                        Navigator.push(
+                          context,
+                          MaterialPageRoute(
+                            builder: (context) => FullScreenImage(
+                              imageUrls: cat.photoUrls,
+                              initialIndex: index,
+                            ),
+                          ),
+                        );
+                      },
+                      child: Image.network(
+                        cat.photoUrls[index],
+                        fit: BoxFit.cover,
+                      ),
                     );
                   },
                 ),
@@ -81,7 +95,7 @@ class CatDetailsScreen extends StatelessWidget {
                       }
                       final owner = snapshot.data!;
                       return Text(
-                        'Owner: ${owner.displayName}',
+                        'Owner: ${owner.name}',
                         style: Theme.of(context).textTheme.titleMedium,
                       );
                     },
@@ -132,14 +146,7 @@ class CatDetailsScreen extends StatelessWidget {
       ),
       floatingActionButton: !isOwner && cat.availableForBreeding
           ? FloatingActionButton.extended(
-              onPressed: () {
-                // TODO: Implement breeding request
-                ScaffoldMessenger.of(context).showSnackBar(
-                  const SnackBar(
-                    content: Text('Breeding request feature coming soon!'),
-                  ),
-                );
-              },
+              onPressed: () => _showBreedingRequestDialog(context),
               label: const Text('Request Breeding'),
               icon: const Icon(Icons.pets),
             )
@@ -173,5 +180,114 @@ class CatDetailsScreen extends StatelessWidget {
     } else {
       return '$months month${months == 1 ? '' : 's'}';
     }
+  }
+
+  void _showBreedingRequestDialog(BuildContext context) async {
+    final currentUser = context.read<AuthService>().currentUser;
+    if (currentUser == null) return;
+
+    final firestoreService = context.read<FirestoreService>();
+    
+    // Get user's cats that are available for breeding
+    final userCats = await firestoreService
+        .getUserCats(currentUser.uid)
+        .first
+        .then((cats) => cats.where((c) => c.availableForBreeding).toList());
+
+    if (userCats.isEmpty) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(
+          content: Text('You need to have a cat available for breeding to make a request'),
+        ),
+      );
+      return;
+    }
+
+    if (!context.mounted) return;
+
+    CatModel? selectedCat;
+    String message = '';
+
+    await showDialog(
+      context: context,
+      builder: (context) => AlertDialog(
+        title: const Text('Breeding Request'),
+        content: StatefulBuilder(
+          builder: (context, setState) => Column(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              DropdownButtonFormField<CatModel>(
+                value: selectedCat,
+                decoration: const InputDecoration(
+                  labelText: 'Select your cat',
+                ),
+                items: userCats.map((cat) {
+                  return DropdownMenuItem(
+                    value: cat,
+                    child: Text(cat.name),
+                  );
+                }).toList(),
+                onChanged: (value) {
+                  setState(() => selectedCat = value);
+                },
+              ),
+              const SizedBox(height: 16),
+              TextField(
+                decoration: const InputDecoration(
+                  labelText: 'Message to owner',
+                  hintText: 'Introduce your cat and explain why you think they would be a good match',
+                ),
+                maxLines: 3,
+                onChanged: (value) => message = value,
+              ),
+            ],
+          ),
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(context),
+            child: const Text('Cancel'),
+          ),
+          TextButton(
+            onPressed: () async {
+              if (selectedCat == null || message.isEmpty) {
+                ScaffoldMessenger.of(context).showSnackBar(
+                  const SnackBar(
+                    content: Text('Please select a cat and write a message'),
+                  ),
+                );
+                return;
+              }
+
+              Navigator.pop(context, {
+                'selectedCat': selectedCat,
+                'message': message,
+              });
+            },
+            child: const Text('Send Request'),
+          ),
+        ],
+      ),
+    ).then((result) async {
+      if (result != null && context.mounted) {
+        final selectedCat = result['selectedCat'] as CatModel;
+        final message = result['message'] as String;
+
+        await firestoreService.sendBreedingRequest(
+          catId: cat.id,
+          requesterId: currentUser.uid,
+          requestMessage: message,
+          requesterCatId: selectedCat.id,
+        );
+
+        if (context.mounted) {
+          ScaffoldMessenger.of(context).showSnackBar(
+            const SnackBar(
+              content: Text('Breeding request sent successfully'),
+            ),
+          );
+        }
+      }
+    });
   }
 } 

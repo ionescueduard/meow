@@ -314,4 +314,81 @@ class FirestoreService {
             .map((doc) => CatModel.fromMap(doc.data(), doc.id))
             .toList());
   }
+
+  // Breeding Requests
+  Future<void> sendBreedingRequest({
+    required String catId,
+    required String requesterId,
+    required String requestMessage,
+    required String requesterCatId,
+  }) async {
+    final batch = _db.batch();
+    final requestId = _db.collection('breedingRequests').doc().id;
+
+    final request = {
+      'id': requestId,
+      'catId': catId,
+      'requesterId': requesterId,
+      'requesterCatId': requesterCatId,
+      'message': requestMessage,
+      'status': 'pending',
+      'createdAt': FieldValue.serverTimestamp(),
+    };
+
+    batch.set(
+      _db.collection('breedingRequests').doc(requestId),
+      request,
+    );
+
+    await batch.commit();
+
+    // Get cat and requester info for notification
+    final cat = await getCat(catId);
+    final requester = await getUser(requesterId);
+    
+    if (cat != null && requester != null) {
+      await _notificationService.sendBreedingRequestNotification(
+        userId: cat.userId,
+        catId: catId,
+        requester: requester,
+      );
+    }
+  }
+
+  Stream<List<Map<String, dynamic>>> getBreedingRequests(String userId) {
+    return _db
+        .collection('breedingRequests')
+        .where('status', isEqualTo: 'pending')
+        .snapshots()
+        .asyncMap((snapshot) async {
+      final requests = <Map<String, dynamic>>[];
+      
+      for (final doc in snapshot.docs) {
+        final data = doc.data();
+        final cat = await getCat(data['catId']);
+        final requester = await getUser(data['requesterId']);
+        final requesterCat = await getCat(data['requesterCatId']);
+        
+        if (cat != null && requester != null && requesterCat != null) {
+          if (cat.userId == userId || data['requesterId'] == userId) {
+            requests.add({
+              ...data,
+              'cat': cat,
+              'requester': requester,
+              'requesterCat': requesterCat,
+            });
+          }
+        }
+      }
+      
+      return requests;
+    });
+  }
+
+  Future<void> updateBreedingRequestStatus(String requestId, String status) async {
+    await _db.collection('breedingRequests').doc(requestId).update({
+      'status': status,
+      'updatedAt': FieldValue.serverTimestamp(),
+    });
+  }
 } 
