@@ -91,12 +91,7 @@ class PostCard extends StatelessWidget {
                 title: const Text('Report'),
                 onTap: () {
                   Navigator.pop(context);
-                  // TODO: Implement report functionality
-                  ScaffoldMessenger.of(context).showSnackBar(
-                    const SnackBar(
-                      content: Text('Report feature coming soon!'),
-                    ),
-                  );
+                  _showReportDialog();
                 },
               ),
             ],
@@ -104,6 +99,67 @@ class PostCard extends StatelessWidget {
         );
       },
     );
+  }
+
+  void _showReportDialog() {
+    showDialog(
+      context: context,
+      builder: (context) => AlertDialog(
+        title: const Text('Report Post'),
+        content: Column(
+          mainAxisSize: MainAxisSize.min,
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            const Text('Why are you reporting this post?'),
+            const SizedBox(height: 16),
+            _buildReportOption('Inappropriate content'),
+            _buildReportOption('Spam'),
+            _buildReportOption('Harassment'),
+            _buildReportOption('False information'),
+            _buildReportOption('Other'),
+          ],
+        ),
+      ),
+    );
+  }
+
+  Widget _buildReportOption(String reason) {
+    return InkWell(
+      onTap: () async {
+        Navigator.pop(context);
+        await _submitReport(reason);
+      },
+      child: Container(
+        width: double.infinity,
+        padding: const EdgeInsets.symmetric(
+          vertical: 12,
+          horizontal: 8,
+        ),
+        child: Text(reason),
+      ),
+    );
+  }
+
+  Future<void> _submitReport(String reason) async {
+    try {
+      await context.read<FirestoreService>().reportPost(
+        postId: post.id,
+        userId: context.read<AuthService>().currentUser!.id,
+        reason: reason,
+      );
+      
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(
+          content: Text('Thank you for reporting this post. We will review it.'),
+        ),
+      );
+    } catch (e) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(
+          content: Text('Failed to submit report. Please try again.'),
+        ),
+      );
+    }
   }
 
   @override

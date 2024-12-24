@@ -8,6 +8,7 @@ import '../../models/chat_room_model.dart';
 import '../../models/user_model.dart';
 import '../../services/auth_service.dart';
 import '../../services/chat_service.dart';
+import '../../screens/cat/cat_details_screen.dart';
 
 class ChatDetailScreen extends StatefulWidget {
   final ChatRoomModel chatRoom;
@@ -92,6 +93,184 @@ class _ChatDetailScreenState extends State<ChatDetailScreen> {
         setState(() => _isLoading = false);
       }
     }
+  }
+
+  void _showFullScreenImage(String imageUrl) {
+    Navigator.push(
+      context,
+      MaterialPageRoute(
+        builder: (_) => FullScreenImage(
+          imageUrl: imageUrl,
+          heroTag: imageUrl,
+        ),
+      ),
+    );
+  }
+
+  Widget _buildImageMessage(String imageUrl) {
+    return GestureDetector(
+      onTap: () => _showFullScreenImage(imageUrl),
+      child: Hero(
+        tag: imageUrl,
+        child: Container(
+          constraints: const BoxConstraints(
+            maxWidth: 200,
+            maxHeight: 200,
+          ),
+          child: ClipRRect(
+            borderRadius: BorderRadius.circular(8),
+            child: Image.network(
+              imageUrl,
+              fit: BoxFit.cover,
+            ),
+          ),
+        ),
+      ),
+    );
+  }
+
+  Widget _buildHeader() {
+    return ListTile(
+      leading: CircleAvatar(
+        backgroundImage: NetworkImage(widget.otherUser.profileImageUrl),
+      ),
+      title: Text(widget.otherUser.username),
+      subtitle: _buildOnlineStatus(),
+    );
+  }
+
+  Widget _buildCatProfileCard(String catId) {
+    return FutureBuilder<CatModel?>(
+      future: _firestoreService.getCat(catId),
+      builder: (context, snapshot) {
+        if (!snapshot.hasData) {
+          return const SizedBox(
+            height: 100,
+            child: Center(
+              child: CircularProgressIndicator(),
+            ),
+          );
+        }
+
+        final cat = snapshot.data!;
+        return GestureDetector(
+          onTap: () => Navigator.push(
+            context,
+            MaterialPageRoute(
+              builder: (_) => CatDetailsScreen(cat: cat),
+            ),
+          ),
+          child: Card(
+            child: Padding(
+              padding: const EdgeInsets.all(8),
+              child: Row(
+                mainAxisSize: MainAxisSize.min,
+                children: [
+                  ClipRRect(
+                    borderRadius: BorderRadius.circular(8),
+                    child: Image.network(
+                      cat.imageUrls.first,
+                      width: 80,
+                      height: 80,
+                      fit: BoxFit.cover,
+                    ),
+                  ),
+                  const SizedBox(width: 12),
+                  Expanded(
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      mainAxisSize: MainAxisSize.min,
+                      children: [
+                        Text(
+                          cat.name,
+                          style: const TextStyle(
+                            fontWeight: FontWeight.bold,
+                            fontSize: 16,
+                          ),
+                        ),
+                        Text(
+                          '${cat.breed} • ${_calculateAge(cat.birthDate)}',
+                          style: TextStyle(
+                            color: Colors.grey[600],
+                          ),
+                        ),
+                        if (cat.isBreeding)
+                          Container(
+                            margin: const EdgeInsets.only(top: 4),
+                            padding: const EdgeInsets.symmetric(
+                              horizontal: 8,
+                              vertical: 2,
+                            ),
+                            decoration: BoxDecoration(
+                              color: Colors.green[100],
+                              borderRadius: BorderRadius.circular(4),
+                            ),
+                            child: Text(
+                              'Available for Breeding',
+                              style: TextStyle(
+                                color: Colors.green[900],
+                                fontSize: 12,
+                              ),
+                            ),
+                          ),
+                      ],
+                    ),
+                  ),
+                ],
+              ),
+            ),
+          ),
+        );
+      },
+    );
+  }
+
+  String _calculateAge(DateTime birthDate) {
+    final now = DateTime.now();
+    final age = now.difference(birthDate);
+    final years = age.inDays ~/ 365;
+    final months = (age.inDays % 365) ~/ 30;
+    
+    if (years > 0) {
+      return '$years year${years == 1 ? '' : 's'}';
+    } else {
+      return '$months month${months == 1 ? '' : 's'}';
+    }
+  }
+
+  Widget _buildOnlineStatus() {
+    return StreamBuilder<UserModel?>(
+      stream: _firestoreService.getUserStream(widget.otherUser.id),
+      builder: (context, snapshot) {
+        if (!snapshot.hasData) {
+          return const Text(
+            'Offline',
+            style: TextStyle(color: Colors.grey),
+          );
+        }
+
+        final isOnline = snapshot.data!.isOnline;
+        return Row(
+          children: [
+            Container(
+              width: 8,
+              height: 8,
+              margin: const EdgeInsets.only(right: 4),
+              decoration: BoxDecoration(
+                shape: BoxShape.circle,
+                color: isOnline ? Colors.green : Colors.grey,
+              ),
+            ),
+            Text(
+              isOnline ? 'Active now' : 'Offline',
+              style: TextStyle(
+                color: isOnline ? Colors.green : Colors.grey,
+              ),
+            ),
+          ],
+        );
+      },
+    );
   }
 
   @override
@@ -194,22 +373,9 @@ class _ChatDetailScreenState extends State<ChatDetailScreen> {
                           crossAxisAlignment: CrossAxisAlignment.start,
                           children: [
                             if (message.type == MessageType.image)
-                              GestureDetector(
-                                onTap: () {
-                                  // TODO: Show full-screen image
-                                },
-                                child: ClipRRect(
-                                  borderRadius: BorderRadius.circular(8),
-                                  child: Image.network(
-                                    message.content,
-                                    width: 200,
-                                    fit: BoxFit.cover,
-                                  ),
-                                ),
-                              )
+                              _buildImageMessage(message.content)
                             else if (message.type == MessageType.catProfile)
-                              // TODO: Implement cat profile card
-                              const Text('Cat Profile')
+                              _buildCatProfileCard(message.content)
                             else
                               Text(
                                 message.content,

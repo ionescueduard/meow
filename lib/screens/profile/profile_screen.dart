@@ -111,7 +111,7 @@ class _ProfileScreenState extends State<ProfileScreen> {
     return StreamBuilder<UserModel?>(
       stream: context
           .read<FirestoreService>()
-          .getUserStream(currentUser.uid), // TODO: Add this method to FirestoreService
+          .getUserStream(currentUser.uid),
       builder: (context, userSnapshot) {
         if (userSnapshot.connectionState == ConnectionState.waiting) {
           return const Center(child: CircularProgressIndicator());
@@ -276,7 +276,7 @@ class _ProfileScreenState extends State<ProfileScreen> {
               StreamBuilder<List<CatModel>>(
                 stream: context
                     .read<FirestoreService>()
-                    .getUserCatsStream(user.id), // TODO: Add this method to FirestoreService
+                    .getUserCats(user.id),
                 builder: (context, catsSnapshot) {
                   if (catsSnapshot.connectionState == ConnectionState.waiting) {
                     return const Center(child: CircularProgressIndicator());

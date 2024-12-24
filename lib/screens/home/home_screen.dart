@@ -5,6 +5,7 @@ import '../feed/feed_screen.dart';
 import '../breeding/breeding_screen.dart';
 import '../chat/chat_screen.dart';
 import '../profile/profile_screen.dart';
+import '../edit_post/edit_post_screen.dart';
 
 class HomeScreen extends StatefulWidget {
   const HomeScreen({super.key});
@@ -23,10 +24,35 @@ class _HomeScreenState extends State<HomeScreen> {
     ProfileScreen(),
   ];
 
+  void _navigateToCreatePost() {
+    Navigator.push(
+      context,
+      MaterialPageRoute(
+        builder: (_) => const EditPostScreen(),
+      ),
+    );
+  }
+
   @override
   Widget build(BuildContext context) {
     return Scaffold(
+      appBar: AppBar(
+        title: const Text('Home'),
+        actions: [
+          IconButton(
+            icon: const Icon(Icons.add_box_outlined),
+            onPressed: _navigateToCreatePost,
+            tooltip: 'Create Post',
+          ),
+        ],
+      ),
       body: _screens[_currentIndex],
+      floatingActionButton: _currentIndex == 0
+          ? FloatingActionButton(
+              onPressed: _navigateToCreatePost,
+              child: const Icon(Icons.add),
+            )
+          : null,
       bottomNavigationBar: NavigationBar(
         selectedIndex: _currentIndex,
         onDestinationSelected: (index) {
@@ -55,17 +81,6 @@ class _HomeScreenState extends State<HomeScreen> {
           ),
         ],
       ),
-      floatingActionButton: _currentIndex == 0
-          ? FloatingActionButton(
-              onPressed: () {
-                // TODO: Navigate to create post screen
-                ScaffoldMessenger.of(context).showSnackBar(
-                  const SnackBar(content: Text('Create post coming soon!')),
-                );
-              },
-              child: const Icon(Icons.add),
-            )
-          : null,
     );
   }
 } 
