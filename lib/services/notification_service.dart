@@ -1,6 +1,7 @@
 import 'package:firebase_messaging/firebase_messaging.dart';
 import 'package:flutter_local_notifications/flutter_local_notifications.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
+import 'dart:io';
 
 class NotificationService {
   final FirebaseMessaging _messaging = FirebaseMessaging.instance;
@@ -87,17 +88,21 @@ class NotificationService {
   }
 
   Future<void> saveToken(String userId) async {
+    // Retrieve the FCM token for the device
     final token = await _messaging.getToken();
+    
+    // Check if the token is not null
     if (token != null) {
+      // Save the token to Firestore under the user's document
       await _firestore
           .collection('users')
           .doc(userId)
           .collection('tokens')
           .doc('fcm')
           .set({
-        'token': token,
-        'updatedAt': DateTime.now().toIso8601String(),
-        'platform': Theme.of(context).platform.toString(),
+        'token': token, // The FCM token
+        'updatedAt': DateTime.now().toIso8601String(), // Current timestamp
+        'platform': Platform.operatingSystem, // Platform information
       });
     }
   }
@@ -146,4 +151,4 @@ class NotificationService {
   Future<void> unsubscribeFromTopic(String topic) async {
     await _messaging.unsubscribeFromTopic(topic);
   }
-} 
+}

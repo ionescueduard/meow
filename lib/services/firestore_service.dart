@@ -112,6 +112,6 @@ class FirestoreService {
     // possibly using a geolocation service
 
     final snapshot = await query.get();
-    return snapshot.docs.map((doc) => CatModel.fromMap(doc.data())).toList();
+    return snapshot.docs.map((doc) => CatModel.fromMap(doc.data() as Map<String, dynamic>)).toList();
   }
 } 
