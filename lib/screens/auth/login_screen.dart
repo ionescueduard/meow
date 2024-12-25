@@ -1,9 +1,32 @@
 import 'package:flutter/material.dart';
+import 'package:firebase_auth/firebase_auth.dart' as tmpAuth;
 import 'package:firebase_ui_auth/firebase_ui_auth.dart';
 import 'package:firebase_ui_oauth_google/firebase_ui_oauth_google.dart';
 
-class LoginScreen extends StatelessWidget {
+class LoginScreen extends StatefulWidget {
   const LoginScreen({super.key});
+
+  @override
+  _LoginScreenState createState() => _LoginScreenState();
+}
+
+class _LoginScreenState extends State<LoginScreen> {
+  @override
+  void initState() {
+    super.initState();
+    _autoLogin();
+  }
+
+  void _autoLogin() async {
+    try {
+      await tmpAuth.FirebaseAuth.instance.signInWithEmailAndPassword(
+        email: 'ionescueduardrobert@gmail.com',
+        password: '123123',
+      );
+    } catch (e) {
+      print('Auto login failed: $e');
+    }
+  }
 
   @override
   Widget build(BuildContext context) {
@@ -42,4 +65,4 @@ class LoginScreen extends StatelessWidget {
       },
     );
   }
-} 
+}

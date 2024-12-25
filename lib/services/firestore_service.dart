@@ -16,6 +16,14 @@ class FirestoreService {
     return doc.exists ? UserModel.fromMap(doc.data()!) : null;
   }
 
+  Stream<UserModel?> getUserStream(String userId) {
+    return _firestore
+        .collection('users')
+        .doc(userId)
+        .snapshots()
+        .map((doc) => doc.exists ? UserModel.fromMap(doc.data()!) : null);
+  }
+
   Future<void> updateUser(UserModel user) async {
     await _firestore.collection('users').doc(user.id).update(user.toMap());
   }
@@ -30,12 +38,29 @@ class FirestoreService {
     return doc.exists ? CatModel.fromMap(doc.data()!) : null;
   }
 
+  Stream<CatModel?> getCatStream(String catId) {
+    return _firestore
+        .collection('cats')
+        .doc(catId)
+        .snapshots()
+        .map((doc) => doc.exists ? CatModel.fromMap(doc.data()!) : null);
+  }
+
   Future<List<CatModel>> getUserCats(String userId) async {
     final snapshot = await _firestore
         .collection('cats')
         .where('ownerId', isEqualTo: userId)
         .get();
     return snapshot.docs.map((doc) => CatModel.fromMap(doc.data())).toList();
+  }
+
+  Stream<List<CatModel>> getUserCatsStream(String userId) {
+    return _firestore
+        .collection('cats')
+        .where('ownerId', isEqualTo: userId)
+        .snapshots()
+        .map((snapshot) =>
+            snapshot.docs.map((doc) => CatModel.fromMap(doc.data())).toList());
   }
 
   Future<void> updateCat(CatModel cat) async {
@@ -56,6 +81,14 @@ class FirestoreService {
     return doc.exists ? PostModel.fromMap(doc.data()!) : null;
   }
 
+  Stream<PostModel?> getPostStream(String postId) {
+    return _firestore
+        .collection('posts')
+        .doc(postId)
+        .snapshots()
+        .map((doc) => doc.exists ? PostModel.fromMap(doc.data()!) : null);
+  }
+
   Stream<List<PostModel>> getFeedPosts() {
     return _firestore
         .collection('posts')
@@ -66,13 +99,14 @@ class FirestoreService {
             snapshot.docs.map((doc) => PostModel.fromMap(doc.data())).toList());
   }
 
-  Future<List<PostModel>> getUserPosts(String userId) async {
-    final snapshot = await _firestore
+  Stream<List<PostModel>> getUserPosts(String userId) {
+    return _firestore
         .collection('posts')
         .where('userId', isEqualTo: userId)
         .orderBy('createdAt', descending: true)
-        .get();
-    return snapshot.docs.map((doc) => PostModel.fromMap(doc.data())).toList();
+        .snapshots()
+        .map((snapshot) =>
+            snapshot.docs.map((doc) => PostModel.fromMap(doc.data())).toList());
   }
 
   Future<void> updatePost(PostModel post) async {
