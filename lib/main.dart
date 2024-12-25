@@ -1,4 +1,5 @@
 import 'package:firebase_core/firebase_core.dart';
+import 'package:flutter/material.dart';
 import 'package:meow/services/chat_service.dart';
 import 'package:meow/services/firestore_service.dart';
 import 'package:meow/services/storage_service.dart';
