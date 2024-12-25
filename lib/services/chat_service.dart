@@ -1,4 +1,6 @@
 import 'package:cloud_firestore/cloud_firestore.dart';
+import 'package:meow/services/notification_service.dart';
+import 'package:meow/services/storage_service.dart';
 import 'package:uuid/uuid.dart';
 
 class Message {
@@ -49,6 +51,11 @@ class ChatService {
   final FirebaseFirestore _firestore = FirebaseFirestore.instance;
   final _uuid = const Uuid();
 
+  final StorageService _storageService;
+  final NotificationService _notificationService;
+
+  ChatService(this._storageService, this._notificationService);
+  
   String _getChatId(String userId1, String userId2) {
     // Ensure consistent chat ID regardless of who initiates
     final List<String> sorted = [userId1, userId2]..sort();

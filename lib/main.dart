@@ -1,5 +1,7 @@
-import 'package:flutter/material.dart';
 import 'package:firebase_core/firebase_core.dart';
+import 'package:meow/services/chat_service.dart';
+import 'package:meow/services/firestore_service.dart';
+import 'package:meow/services/storage_service.dart';
 import 'package:provider/provider.dart';
 import 'services/auth_service.dart';
 import 'services/notification_service.dart';
@@ -28,7 +30,23 @@ void main() async {
     MultiProvider(
       providers: [
         ChangeNotifierProvider(create: (_) => AuthService()),
+
         Provider.value(value: notificationService),
+
+        Provider<FirestoreService>(
+          create: (_) => FirestoreService()
+        ),
+
+        Provider<StorageService>(
+          create: (_) => StorageService()
+        ),
+
+        Provider<ChatService>(
+          create: (context) => ChatService(
+            context.read<StorageService>(),
+            context.read<NotificationService>(),
+          ),
+        ),
       ],
       child: const MeowApp(),
     ),

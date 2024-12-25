@@ -1,6 +1,10 @@
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 import '../../services/auth_service.dart';
+import '../feed/feed_screen.dart';
+import '../breeding/breeding_screen.dart';
+import '../chat/chat_screen.dart';
+import '../profile/profile_screen.dart';
 
 class HomeScreen extends StatefulWidget {
   const HomeScreen({super.key});
@@ -12,11 +16,11 @@ class HomeScreen extends StatefulWidget {
 class _HomeScreenState extends State<HomeScreen> {
   int _currentIndex = 0;
 
-  final List<Widget> _screens = [
-    const Center(child: Text('Feed')),  // TODO: Replace with FeedScreen
-    const Center(child: Text('Breeding')),  // TODO: Replace with BreedingScreen
-    const Center(child: Text('Chat')),  // TODO: Replace with ChatScreen
-    const Center(child: Text('Profile')),  // TODO: Replace with ProfileScreen
+  final List<Widget> _screens = const [
+    FeedScreen(), //const Center(child: Text('Feed')),
+    BreedingScreen(),
+    ChatScreen(),
+    ProfileScreen(),
   ];
 
   @override
@@ -61,13 +65,13 @@ class _HomeScreenState extends State<HomeScreen> {
         ],
       ),
       floatingActionButton: FloatingActionButton(
-        onPressed: () {
+              onPressed: () {
           // TODO: Implement post creation
-          ScaffoldMessenger.of(context).showSnackBar(
-            const SnackBar(content: Text('Create post coming soon!')),
-          );
-        },
-        child: const Icon(Icons.add),
+                ScaffoldMessenger.of(context).showSnackBar(
+                  const SnackBar(content: Text('Create post coming soon!')),
+                );
+              },
+              child: const Icon(Icons.add),
       ),
     );
   }
