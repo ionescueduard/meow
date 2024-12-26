@@ -2,6 +2,8 @@ import 'package:flutter/material.dart';
 import 'package:firebase_auth/firebase_auth.dart' as tmpAuth;
 import 'package:firebase_ui_auth/firebase_ui_auth.dart';
 import 'package:firebase_ui_oauth_google/firebase_ui_oauth_google.dart';
+import '../../services/firestore_service.dart';
+import 'package:provider/provider.dart';
 
 class LoginScreen extends StatefulWidget {
   const LoginScreen({super.key});
@@ -14,7 +16,7 @@ class _LoginScreenState extends State<LoginScreen> {
   @override
   void initState() {
     super.initState();
-    _autoLogin();
+    //_autoLogin();
   }
 
   void _autoLogin() async {
@@ -37,12 +39,33 @@ class _LoginScreenState extends State<LoginScreen> {
           clientId: '', // You'll need to add your Google Client ID here
         ),
       ],
+      actions: [
+        AuthStateChangeAction<SignedIn>((context, state) async {
+          final firestoreService = context.read<FirestoreService>();
+          final user = state.user;
+          
+          if (user != null) {
+            // Check if user profile exists
+            final userProfile = await firestoreService.getUser(user.uid);
+            
+            if (mounted) {
+              if (userProfile == null) {
+                // New user - redirect to profile setup
+                Navigator.pushReplacementNamed(context, '/profile-setup');
+              } else {
+                // Existing user - redirect to home
+                Navigator.pushReplacementNamed(context, '/home');
+              }
+            }
+          }
+        }),
+      ],
       headerBuilder: (context, constraints, shrinkOffset) {
         return Padding(
           padding: const EdgeInsets.all(20),
           child: AspectRatio(
             aspectRatio: 1,
-            child: Image.asset('assets/images/logo.png'), // Make sure logo.png exists in assets/images/
+            child: Image.asset('assets/images/logo.png'),
           ),
         );
       },

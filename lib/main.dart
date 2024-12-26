@@ -1,6 +1,7 @@
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:firebase_core/firebase_core.dart';
 import 'package:flutter/material.dart';
+import 'package:meow/models/user_model.dart';
 import 'package:meow/services/chat_service.dart';
 import 'package:meow/services/firestore_service.dart';
 import 'package:meow/services/storage_service.dart';
@@ -10,6 +11,7 @@ import 'services/notification_service.dart';
 import 'package:flutter/foundation.dart' show kIsWeb;
 import 'config/theme.dart';
 import 'screens/auth/login_screen.dart';
+import 'screens/auth/profile_setup_screen.dart';
 import 'screens/home/home_screen.dart';
 import 'firebase_options.dart';
 
@@ -47,29 +49,51 @@ class MeowApp extends StatelessWidget {
       title: 'Meow - Cat Breeding App',
       theme: AppTheme.lightTheme,
       darkTheme: AppTheme.darkTheme,
-      home: FutureBuilder(
-        future: _initializeApp(context),
-        builder: (context, snapshot) {
-          if (snapshot.connectionState == ConnectionState.waiting) {
-            return const Center(child: CircularProgressIndicator());
-          }
+      initialRoute: '/',
+      routes: {
+        '/': (context) => _buildAuthWrapper(context),
+        '/profile-setup': (context) => const ProfileSetupScreen(),
+        '/home': (context) => const HomeScreen(),
+      },
+    );
+  }
 
-          return StreamBuilder<User?>(
-            stream: context.read<AuthService>().authStateChanges,
-            builder: (context, snapshot) {
-              if (snapshot.connectionState == ConnectionState.waiting) {
-                return const Center(child: CircularProgressIndicator());
-              }
+  Widget _buildAuthWrapper(BuildContext context) {
+    return FutureBuilder(
+      future: _initializeApp(context),
+      builder: (context, snapshot) {
+        if (snapshot.connectionState == ConnectionState.waiting) {
+          return const Center(child: CircularProgressIndicator());
+        }
 
-              if (snapshot.hasData) {
-                return const HomeScreen();
-              }
+        return StreamBuilder<User?>(
+          stream: context.read<AuthService>().authStateChanges,
+          builder: (context, snapshot) {
+            if (snapshot.connectionState == ConnectionState.waiting) {
+              return const Center(child: CircularProgressIndicator());
+            }
 
-              return const LoginScreen();
-            },
-          );
-        },
-      ),
+            if (snapshot.hasData) {
+              return FutureBuilder<UserModel?>(
+                future: context.read<FirestoreService>().getUser(snapshot.data!.uid),
+                builder: (context, userSnapshot) {
+                  if (userSnapshot.connectionState == ConnectionState.waiting) {
+                    return const Center(child: CircularProgressIndicator());
+                  }
+
+                  if (userSnapshot.data == null) {
+                    return const ProfileSetupScreen();
+                  }
+
+                  return const HomeScreen();
+                },
+              );
+            }
+
+            return const LoginScreen();
+          },
+        );
+      },
     );
   }
 

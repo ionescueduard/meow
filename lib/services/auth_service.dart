@@ -1,6 +1,7 @@
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:flutter/foundation.dart';
 import 'package:google_sign_in/google_sign_in.dart';
+import 'package:flutter/material.dart';
 
 class AuthService extends ChangeNotifier {
   final FirebaseAuth _auth = FirebaseAuth.instance;
@@ -9,7 +10,7 @@ class AuthService extends ChangeNotifier {
   User? get currentUser => _auth.currentUser;
   Stream<User?> get authStateChanges => _auth.authStateChanges();
 
-  Future<UserCredential?> signInWithEmail(String email, String password) async {
+  Future<UserCredential> signInWithEmail(String email, String password) async {
     try {
       final credential = await _auth.signInWithEmailAndPassword(
         email: email,
@@ -22,20 +23,30 @@ class AuthService extends ChangeNotifier {
     }
   }
 
-  Future<UserCredential?> signUpWithEmail(String email, String password) async {
+  Future<UserCredential> signUpWithEmail(
+    String email, 
+    String password,
+    BuildContext context,
+  ) async {
     try {
       final credential = await _auth.createUserWithEmailAndPassword(
         email: email,
         password: password,
       );
       notifyListeners();
+      
+      // Redirect to profile setup
+      if (context.mounted) {
+        Navigator.pushReplacementNamed(context, '/profile-setup');
+      }
+      
       return credential;
     } catch (e) {
       rethrow;
     }
   }
 
-  Future<UserCredential?> signInWithGoogle() async {
+  Future<UserCredential?> signInWithGoogle(BuildContext context) async {
     try {
       final GoogleSignInAccount? googleUser = await _googleSignIn.signIn();
       if (googleUser == null) return null;
@@ -47,6 +58,14 @@ class AuthService extends ChangeNotifier {
       );
 
       final userCredential = await _auth.signInWithCredential(credential);
+      
+      // Check if this is a new user
+      if (userCredential.additionalUserInfo?.isNewUser ?? false) {
+        if (context.mounted) {
+          Navigator.pushReplacementNamed(context, '/profile-setup');
+        }
+      }
+      
       notifyListeners();
       return userCredential;
     } catch (e) {
