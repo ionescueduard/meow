@@ -45,7 +45,7 @@ class _EditCatScreenState extends State<EditCatScreen> {
       _photoUrls.addAll(widget.cat!.photoUrls);
       _healthRecords.addAll(widget.cat!.healthRecords);
       _healthRecordDates.addAll(widget.cat!.healthRecordDates ?? {});
-    } else { //new cat
+    } else {
       _catId = const Uuid().v4();
     }
   }
@@ -123,6 +123,7 @@ class _EditCatScreenState extends State<EditCatScreen> {
         breedingStatus: _breedingStatus,
         healthRecords: _healthRecords,
         healthRecordDates: _healthRecordDates,
+        createdAt: widget.cat?.createdAt,
       );
 
       final firestoreService = context.read<FirestoreService>();
@@ -210,6 +211,26 @@ class _EditCatScreenState extends State<EditCatScreen> {
                       child: ListView(
                         scrollDirection: Axis.horizontal,
                         children: [
+                          // Default profile photo or first photo
+                          Container(
+                            width: 120,
+                            margin: const EdgeInsets.only(right: 8),
+                            decoration: BoxDecoration(
+                              border: Border.all(color: Colors.grey),
+                              borderRadius: BorderRadius.circular(8),
+                              image: _photoUrls.isNotEmpty
+                                ? DecorationImage(
+                                    image: NetworkImage(_photoUrls.first),
+                                    fit: BoxFit.cover,
+                                  )
+                                : null,
+                            ),
+                            child: _photoUrls.isEmpty
+                              ? const Center(
+                                  child: Icon(Icons.pets, size: 40),
+                                )
+                              : null,
+                          ),
                           // Add photo button
                           InkWell(
                             onTap: _pickImage,
@@ -223,8 +244,8 @@ class _EditCatScreenState extends State<EditCatScreen> {
                             ),
                           ),
                           const SizedBox(width: 8),
-                          // Photo list
-                          ..._photoUrls.map((url) => Stack(
+                          // Additional photos
+                          ..._photoUrls.skip(1).map((url) => Stack(
                                 children: [
                                   Container(
                                     width: 120,

@@ -40,32 +40,57 @@ class CatDetailsScreen extends StatelessWidget {
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
-            if (cat.photoUrls.isNotEmpty)
-              SizedBox(
-                height: 300,
-                child: PageView.builder(
-                  itemCount: cat.photoUrls.length,
-                  itemBuilder: (context, index) {
-                    return GestureDetector(
-                      onTap: () {
-                        Navigator.push(
-                          context,
-                          MaterialPageRoute(
-                            builder: (context) => FullScreenImage(
-                              imageUrls: cat.photoUrls,
-                              initialIndex: index,
+            SizedBox(
+              height: 300,
+              child: GestureDetector(
+                onTap: () {
+                  Navigator.push(
+                    context,
+                    MaterialPageRoute(
+                      builder: (context) => cat.photoUrls.isNotEmpty
+                        ? FullScreenImage(
+                            imageUrls: cat.photoUrls,
+                            initialIndex: 0,
+                          )
+                        : Scaffold(
+                            appBar: AppBar(),
+                            body: Container(
+                              color: Colors.grey[300],
+                              child: const Center(
+                                child: Icon(
+                                  Icons.pets,
+                                  size: 120,
+                                  color: Colors.white,
+                                ),
+                              ),
                             ),
                           ),
+                    ),
+                  );
+                },
+                child: cat.photoUrls.isNotEmpty
+                  ? PageView.builder(
+                      itemCount: cat.photoUrls.length,
+                      itemBuilder: (context, index) {
+                        return Image.network(
+                          cat.photoUrls[index],
+                          fit: BoxFit.cover,
                         );
                       },
-                      child: Image.network(
-                        cat.photoUrls[index],
-                        fit: BoxFit.cover,
+                    )
+                  : Container(
+                      color: Colors.grey[300],
+                      width: double.infinity,
+                      child: const Center(
+                        child: Icon(
+                          Icons.pets,
+                          size: 80,
+                          color: Colors.white,
+                        ),
                       ),
-                    );
-                  },
-                ),
+                    ),
               ),
+            ),
             Padding(
               padding: const EdgeInsets.all(16.0),
               child: Column(

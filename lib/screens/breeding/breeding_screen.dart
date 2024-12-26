@@ -234,7 +234,9 @@ class _CatCard extends StatelessWidget {
                     )
                   : Container(
                       color: Colors.grey[300],
-                      child: const Icon(Icons.pets, size: 64),
+                      child: const Center(
+                        child: Icon(Icons.pets, size: 64),
+                      ),
                     ),
             ),
 
