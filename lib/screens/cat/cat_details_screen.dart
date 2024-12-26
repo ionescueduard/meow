@@ -127,11 +127,29 @@ class CatDetailsScreen extends StatelessWidget {
                           style: Theme.of(context).textTheme.titleLarge,
                         ),
                         const SizedBox(height: 8),
-                        ...cat.healthRecords.entries.map((entry) => ListTile(
-                            title: Text(entry.key),
-                            subtitle: Text(entry.value),
-                          ),
-                        ),
+                        ...cat.healthRecords.entries.map((entry) {
+                          final date = cat.healthRecordDates[entry.key];
+                          return Card(
+                            child: ListTile(
+                              title: Text(entry.key),
+                              subtitle: Column(
+                                crossAxisAlignment: CrossAxisAlignment.start,
+                                children: [
+                                  if (date != null)
+                                    Text(
+                                      'Date: ${date.day}/${date.month}/${date.year}',
+                                      style: const TextStyle(
+                                        fontWeight: FontWeight.bold,
+                                        fontSize: 12,
+                                      ),
+                                    ),
+                                  const SizedBox(height: 4),
+                                  Text(entry.value),
+                                ],
+                              ),
+                            ),
+                          );
+                        }),
                       ],
                     ),
                 ],

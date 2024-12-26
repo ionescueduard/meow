@@ -26,6 +26,7 @@ class CatModel {
   String? description;
   BreedingStatus breedingStatus;
   Map<String, String> healthRecords; // key: record type, value: details
+  Map<String, DateTime> healthRecordDates; // key: record type, value: date of record
   DateTime createdAt;
   DateTime updatedAt;
 
@@ -40,11 +41,13 @@ class CatModel {
     this.description,
     BreedingStatus? breedingStatus,
     Map<String, String>? healthRecords,
+    Map<String, DateTime>? healthRecordDates,
     DateTime? createdAt,
     DateTime? updatedAt,
   })  : photoUrls = photoUrls ?? [],
         breedingStatus = breedingStatus ?? BreedingStatus.notAvailable,
         healthRecords = healthRecords ?? {},
+        healthRecordDates = healthRecordDates ?? {},
         createdAt = createdAt ?? DateTime.now(),
         updatedAt = updatedAt ?? DateTime.now();
 
@@ -60,6 +63,9 @@ class CatModel {
       'description': description,
       'breedingStatus': breedingStatus.toString().split('.').last,
       'healthRecords': healthRecords,
+      'healthRecordDates': healthRecordDates.map(
+        (key, value) => MapEntry(key, value.toIso8601String()),
+      ),
       'createdAt': createdAt.toIso8601String(),
       'updatedAt': updatedAt.toIso8601String(),
     };
@@ -83,6 +89,10 @@ class CatModel {
         (e) => e.toString().split('.').last == map['breedingStatus'],
       ),
       healthRecords: Map<String, String>.from(map['healthRecords'] ?? {}),
+      healthRecordDates: (map['healthRecordDates'] as Map<String, dynamic>?)?.map(
+            (key, value) => MapEntry(key, DateTime.parse(value as String)),
+          ) ??
+          {},
       createdAt: DateTime.parse(map['createdAt'] as String),
       updatedAt: DateTime.parse(map['updatedAt'] as String),
     );
@@ -97,6 +107,7 @@ class CatModel {
     String? description,
     BreedingStatus? breedingStatus,
     Map<String, String>? healthRecords,
+    Map<String, DateTime>? healthRecordDates,
   }) {
     return CatModel(
       id: id,
@@ -109,6 +120,7 @@ class CatModel {
       description: description ?? this.description,
       breedingStatus: breedingStatus ?? this.breedingStatus,
       healthRecords: healthRecords ?? this.healthRecords,
+      healthRecordDates: healthRecordDates ?? this.healthRecordDates,
       createdAt: createdAt,
       updatedAt: DateTime.now(),
     );

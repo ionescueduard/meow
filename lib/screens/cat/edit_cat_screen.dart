@@ -28,6 +28,7 @@ class _EditCatScreenState extends State<EditCatScreen> {
   BreedingStatus _breedingStatus = BreedingStatus.notAvailable;
   final List<String> _photoUrls = [];
   final Map<String, String> _healthRecords = {};
+  final Map<String, DateTime> _healthRecordDates = {};
   bool _isLoading = false;
 
   @override
@@ -43,6 +44,7 @@ class _EditCatScreenState extends State<EditCatScreen> {
       _breedingStatus = widget.cat!.breedingStatus;
       _photoUrls.addAll(widget.cat!.photoUrls);
       _healthRecords.addAll(widget.cat!.healthRecords);
+      _healthRecordDates.addAll(widget.cat!.healthRecordDates ?? {});
     } else { //new cat
       _catId = const Uuid().v4();
     }
@@ -120,6 +122,7 @@ class _EditCatScreenState extends State<EditCatScreen> {
         description: _descriptionController.text.trim(),
         breedingStatus: _breedingStatus,
         healthRecords: _healthRecords,
+        healthRecordDates: _healthRecordDates,
       );
 
       final firestoreService = context.read<FirestoreService>();
@@ -134,14 +137,42 @@ class _EditCatScreenState extends State<EditCatScreen> {
   }
 
   Future<void> _addHealthRecord() async {
-    final result = await showDialog<Map<String, String>>(
+    final result = await showDialog<Map<String, dynamic>>(
       context: context,
       builder: (context) => _AddHealthRecordDialog(),
     );
 
     if (result != null) {
       setState(() {
-        _healthRecords.addAll(result);
+        _healthRecords[result['title'] as String] = result['description'] as String;
+        _healthRecordDates[result['title'] as String] = result['date'] as DateTime;
+      });
+    }
+  }
+
+  Future<void> _editHealthRecord(String originalTitle) async {
+    final record = _healthRecords[originalTitle];
+    final date = _healthRecordDates[originalTitle];
+    if (record == null || date == null) return;
+
+    final result = await showDialog<Map<String, dynamic>>(
+      context: context,
+      builder: (context) => _AddHealthRecordDialog(
+        initialTitle: originalTitle,
+        initialDescription: record,
+        initialDate: date,
+      ),
+    );
+
+    if (result != null) {
+      setState(() {
+        // Remove old record
+        _healthRecords.remove(originalTitle);
+        _healthRecordDates.remove(originalTitle);
+        
+        // Add updated record
+        _healthRecords[result['title'] as String] = result['description'] as String;
+        _healthRecordDates[result['title'] as String] = result['date'] as DateTime;
       });
     }
   }
@@ -245,17 +276,30 @@ class _EditCatScreenState extends State<EditCatScreen> {
                     ),
                     const SizedBox(height: 16),
 
+                    // Breed Section
+                    const Text(
+                      'Breed',
+                      style: TextStyle(
+                        fontSize: 16,
+                        fontWeight: FontWeight.bold,
+                      ),
+                    ),
+                    const SizedBox(height: 8),
                     SegmentedButton<CatBreed>(
                       segments: CatBreed.values.map((breed) {
-                        return ButtonSegment(
+                        return ButtonSegment<CatBreed>(
                           value: breed,
                           label: Text(breed.toString().split('.').last),
-                          icon: const Icon(Icons.pets),
-                      );}).toList(),
+                          icon: null,
+                        );
+                      }).toList(),
                       selected: {_breed},
-                      onSelectionChanged: (Set<CatBreed> selection) {
-                        setState(() => _breed = selection.first);
+                      onSelectionChanged: (Set<CatBreed> newSelection) {
+                        setState(() {
+                          _breed = newSelection.first;
+                        });
                       },
+                      showSelectedIcon: false,
                     ),
                     const SizedBox(height: 16),
 
@@ -281,33 +325,57 @@ class _EditCatScreenState extends State<EditCatScreen> {
                     ),
                     const SizedBox(height: 16),
 
-                    // Gender
+                    // Gender Section
+                    const Text(
+                      'Gender',
+                      style: TextStyle(
+                        fontSize: 16,
+                        fontWeight: FontWeight.bold,
+                      ),
+                    ),
+                    const SizedBox(height: 8),
                     SegmentedButton<CatGender>(
                       segments: CatGender.values.map((gender) {
-                        return ButtonSegment(
+                        return ButtonSegment<CatGender>(
                           value: gender,
                           label: Text(gender.toString().split('.').last),
-                          icon: const Icon(Icons.pets),
-                      );}).toList(),
+                          icon: null,
+                        );
+                      }).toList(),
                       selected: {_gender},
-                      onSelectionChanged: (Set<CatGender> selection) {
-                        setState(() => _gender = selection.first);
+                      onSelectionChanged: (Set<CatGender> newSelection) {
+                        setState(() {
+                          _gender = newSelection.first;
+                        });
                       },
+                      showSelectedIcon: false,
                     ),
                     const SizedBox(height: 16),
 
-                    // Breeding status
+                    // Breeding Status Section
+                    const Text(
+                      'Breeding Status',
+                      style: TextStyle(
+                        fontSize: 16,
+                        fontWeight: FontWeight.bold,
+                      ),
+                    ),
+                    const SizedBox(height: 8),
                     SegmentedButton<BreedingStatus>(
-                      segments: BreedingStatus.values.map((breedingStatus) {
-                        return ButtonSegment(
-                          value: breedingStatus,
-                          label: Text(breedingStatus.toString().split('.').last),
-                          icon: const Icon(Icons.pets),
-                      );}).toList(),
+                      segments: BreedingStatus.values.map((status) {
+                        return ButtonSegment<BreedingStatus>(
+                          value: status,
+                          label: Text(status.toString().split('.').last),
+                          icon: null,
+                        );
+                      }).toList(),
                       selected: {_breedingStatus},
-                      onSelectionChanged: (Set<BreedingStatus> selection) {
-                        setState(() => _breedingStatus = selection.first);
+                      onSelectionChanged: (Set<BreedingStatus> newSelection) {
+                        setState(() {
+                          _breedingStatus = newSelection.first;
+                        });
                       },
+                      showSelectedIcon: false,
                     ),
                     const SizedBox(height: 16),
 
@@ -340,20 +408,47 @@ class _EditCatScreenState extends State<EditCatScreen> {
                     ),
                     const SizedBox(height: 8),
                     ..._healthRecords.entries.map(
-                      (entry) => Card(
-                        child: ListTile(
-                          title: Text(entry.key),
-                          subtitle: Text(entry.value),
-                          trailing: IconButton(
-                            icon: const Icon(Icons.delete),
-                            onPressed: () {
-                              setState(() {
-                                _healthRecords.remove(entry.key);
-                              });
-                            },
+                      (entry) {
+                        final date = _healthRecordDates[entry.key];
+                        return Card(
+                          child: ListTile(
+                            title: Text(entry.key),
+                            subtitle: Column(
+                              crossAxisAlignment: CrossAxisAlignment.start,
+                              children: [
+                                if (date != null)
+                                  Text(
+                                    'Date: ${date.day}/${date.month}/${date.year}',
+                                    style: const TextStyle(
+                                      fontWeight: FontWeight.bold,
+                                      fontSize: 12,
+                                    ),
+                                  ),
+                                const SizedBox(height: 4),
+                                Text(entry.value),
+                              ],
+                            ),
+                            trailing: Row(
+                              mainAxisSize: MainAxisSize.min,
+                              children: [
+                                IconButton(
+                                  icon: const Icon(Icons.edit),
+                                  onPressed: () => _editHealthRecord(entry.key),
+                                ),
+                                IconButton(
+                                  icon: const Icon(Icons.delete),
+                                  onPressed: () {
+                                    setState(() {
+                                      _healthRecords.remove(entry.key);
+                                      _healthRecordDates.remove(entry.key);
+                                    });
+                                  },
+                                ),
+                              ],
+                            ),
                           ),
-                        ),
-                      ),
+                        );
+                      },
                     ),
                   ],
                 ),
@@ -364,57 +459,104 @@ class _EditCatScreenState extends State<EditCatScreen> {
 }
 
 class _AddHealthRecordDialog extends StatefulWidget {
+  final String? initialTitle;
+  final String? initialDescription;
+  final DateTime? initialDate;
+
+  const _AddHealthRecordDialog({
+    this.initialTitle,
+    this.initialDescription,
+    this.initialDate,
+  });
+
   @override
-  State<_AddHealthRecordDialog> createState() => _AddHealthRecordDialogState();
+  _AddHealthRecordDialogState createState() => _AddHealthRecordDialogState();
 }
 
 class _AddHealthRecordDialogState extends State<_AddHealthRecordDialog> {
-  final _typeController = TextEditingController();
-  final _detailsController = TextEditingController();
+  final _titleController = TextEditingController();
+  final _descriptionController = TextEditingController();
+  late DateTime _selectedDate;
+
+  @override
+  void initState() {
+    super.initState();
+    _titleController.text = widget.initialTitle ?? '';
+    _descriptionController.text = widget.initialDescription ?? '';
+    _selectedDate = widget.initialDate ?? DateTime.now();
+  }
 
   @override
   void dispose() {
-    _typeController.dispose();
-    _detailsController.dispose();
+    _titleController.dispose();
+    _descriptionController.dispose();
     super.dispose();
+  }
+
+  Future<void> _selectDate(BuildContext context) async {
+    final DateTime? picked = await showDatePicker(
+      context: context,
+      initialDate: _selectedDate,
+      firstDate: DateTime(2000),
+      lastDate: DateTime.now(),
+    );
+    if (picked != null && picked != _selectedDate) {
+      setState(() {
+        _selectedDate = picked;
+      });
+    }
   }
 
   @override
   Widget build(BuildContext context) {
     return AlertDialog(
       title: const Text('Add Health Record'),
-      content: Column(
-        mainAxisSize: MainAxisSize.min,
-        children: [
-          TextField(
-            controller: _typeController,
-            decoration: const InputDecoration(
-              labelText: 'Record Type',
-              hintText: 'e.g., Vaccination, Check-up',
+      content: SingleChildScrollView(
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            TextFormField(
+              controller: _titleController,
+              decoration: const InputDecoration(
+                labelText: 'Title',
+                hintText: 'e.g., Vaccination, Check-up',
+              ),
             ),
-          ),
-          const SizedBox(height: 16),
-          TextField(
-            controller: _detailsController,
-            decoration: const InputDecoration(
-              labelText: 'Details',
-              hintText: 'e.g., Annual vaccination completed',
+            const SizedBox(height: 16),
+            TextFormField(
+              controller: _descriptionController,
+              decoration: const InputDecoration(
+                labelText: 'Description',
+                hintText: 'Enter details about the health record',
+              ),
+              maxLines: 3,
             ),
-            maxLines: 2,
-          ),
-        ],
+            const SizedBox(height: 16),
+            ListTile(
+              title: const Text('Date'),
+              subtitle: Text(
+                '${_selectedDate.day}/${_selectedDate.month}/${_selectedDate.year}',
+              ),
+              trailing: IconButton(
+                icon: const Icon(Icons.calendar_today),
+                onPressed: () => _selectDate(context),
+              ),
+            ),
+          ],
+        ),
       ),
       actions: [
         TextButton(
-          onPressed: () => Navigator.pop(context),
+          onPressed: () => Navigator.of(context).pop(),
           child: const Text('Cancel'),
         ),
         TextButton(
           onPressed: () {
-            if (_typeController.text.isNotEmpty &&
-                _detailsController.text.isNotEmpty) {
-              Navigator.pop(context, {
-                _typeController.text.trim(): _detailsController.text.trim(),
+            if (_titleController.text.isNotEmpty) {
+              Navigator.of(context).pop({
+                'title': _titleController.text.trim(),
+                'description': _descriptionController.text.trim(),
+                'date': _selectedDate,
               });
             }
           },

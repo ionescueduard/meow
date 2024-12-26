@@ -40,7 +40,6 @@ class _ProfileScreenState extends State<ProfileScreen> {
 
     try {
       final updatedUser = user.copyWith(
-        name: _nameController.text.trim(),
         location: _locationController.text.trim(),
         bio: _bioController.text.trim(),
       );
@@ -175,18 +174,13 @@ class _ProfileScreenState extends State<ProfileScreen> {
                   key: _formKey,
                   child: Column(
                     children: [
-                      TextFormField(
-                        controller: _nameController,
-                        decoration: const InputDecoration(
-                          labelText: 'Name',
-                          prefixIcon: Icon(Icons.person),
-                        ),
-                        validator: (value) {
-                          if (value == null || value.isEmpty) {
-                            return 'Please enter your name';
-                          }
-                          return null;
-                        },
+                      ListTile(
+                        leading: const Icon(Icons.person),
+                        title: Text(user.name),
+                      ),
+                      ListTile(
+                        leading: const Icon(Icons.email),
+                        title: Text(user.email),
                       ),
                       const SizedBox(height: 16),
                       TextFormField(
@@ -235,10 +229,10 @@ class _ProfileScreenState extends State<ProfileScreen> {
                         user.name,
                         style: Theme.of(context).textTheme.titleLarge,
                       ),
-                      trailing: IconButton(
-                        icon: const Icon(Icons.edit),
-                        onPressed: () => setState(() => _isEditing = true),
-                      ),
+                    ),
+                    ListTile(
+                      leading: const Icon(Icons.email),
+                      title: Text(user.email),
                     ),
                     if (user.location != null)
                       ListTile(
@@ -250,6 +244,13 @@ class _ProfileScreenState extends State<ProfileScreen> {
                         leading: const Icon(Icons.info),
                         title: Text(user.bio!),
                       ),
+                    Center(
+                      child: TextButton.icon(
+                        icon: const Icon(Icons.edit),
+                        label: const Text('Edit Profile'),
+                        onPressed: () => setState(() => _isEditing = true),
+                      ),
+                    ),
                   ],
                 ),
 
