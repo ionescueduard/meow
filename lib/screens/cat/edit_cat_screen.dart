@@ -20,7 +20,7 @@ class EditCatScreen extends StatefulWidget {
 class _EditCatScreenState extends State<EditCatScreen> {
   final _formKey = GlobalKey<FormState>();
   final _nameController = TextEditingController();
-  final _breedController = TextEditingController();
+  CatBreed _breed = CatBreed.britishShorthair;
   final _descriptionController = TextEditingController();
   late String _catId;
   DateTime? _birthDate;
@@ -35,7 +35,7 @@ class _EditCatScreenState extends State<EditCatScreen> {
     super.initState();
     if (widget.cat != null) {
       _nameController.text = widget.cat!.name;
-      _breedController.text = widget.cat!.breed;
+      _breed = widget.cat!.breed;
       _descriptionController.text = widget.cat!.description ?? '';
       _catId = widget.cat!.id;
       _birthDate = widget.cat!.birthDate;
@@ -51,7 +51,6 @@ class _EditCatScreenState extends State<EditCatScreen> {
   @override
   void dispose() {
     _nameController.dispose();
-    _breedController.dispose();
     _descriptionController.dispose();
     super.dispose();
   }
@@ -114,7 +113,7 @@ class _EditCatScreenState extends State<EditCatScreen> {
         id: _catId,
         ownerId: currentUser.uid,
         name: _nameController.text.trim(),
-        breed: _breedController.text.trim(),
+        breed: _breed,
         birthDate: _birthDate!,
         gender: _gender,
         photoUrls: _photoUrls,
@@ -246,17 +245,16 @@ class _EditCatScreenState extends State<EditCatScreen> {
                     ),
                     const SizedBox(height: 16),
 
-                    TextFormField(
-                      controller: _breedController,
-                      decoration: const InputDecoration(
-                        labelText: 'Breed',
-                        prefixIcon: Icon(Icons.category),
-                      ),
-                      validator: (value) {
-                        if (value == null || value.isEmpty) {
-                          return 'Please enter a breed';
-                        }
-                        return null;
+                    SegmentedButton<CatBreed>(
+                      segments: CatBreed.values.map((breed) {
+                        return ButtonSegment(
+                          value: breed,
+                          label: Text(breed.toString().split('.').last),
+                          icon: const Icon(Icons.pets),
+                      );}).toList(),
+                      selected: {_breed},
+                      onSelectionChanged: (Set<CatBreed> selection) {
+                        setState(() => _breed = selection.first);
                       },
                     ),
                     const SizedBox(height: 16),
@@ -285,18 +283,12 @@ class _EditCatScreenState extends State<EditCatScreen> {
 
                     // Gender
                     SegmentedButton<CatGender>(
-                      segments: const [
-                        ButtonSegment(
-                          value: CatGender.male,
-                          label: Text('Male'),
-                          icon: Icon(Icons.male),
-                        ),
-                        ButtonSegment(
-                          value: CatGender.female,
-                          label: Text('Female'),
-                          icon: Icon(Icons.female),
-                        ),
-                      ],
+                      segments: CatGender.values.map((gender) {
+                        return ButtonSegment(
+                          value: gender,
+                          label: Text(gender.toString().split('.').last),
+                          icon: const Icon(Icons.pets),
+                      );}).toList(),
                       selected: {_gender},
                       onSelectionChanged: (Set<CatGender> selection) {
                         setState(() => _gender = selection.first);
@@ -306,16 +298,12 @@ class _EditCatScreenState extends State<EditCatScreen> {
 
                     // Breeding status
                     SegmentedButton<BreedingStatus>(
-                      segments: const [
-                        ButtonSegment(
-                          value: BreedingStatus.available,
-                          label: Text('Available'),
-                        ),
-                        ButtonSegment(
-                          value: BreedingStatus.notAvailable,
-                          label: Text('Not Available'),
-                        ),
-                      ],
+                      segments: BreedingStatus.values.map((breedingStatus) {
+                        return ButtonSegment(
+                          value: breedingStatus,
+                          label: Text(breedingStatus.toString().split('.').last),
+                          icon: const Icon(Icons.pets),
+                      );}).toList(),
                       selected: {_breedingStatus},
                       onSelectionChanged: (Set<BreedingStatus> selection) {
                         setState(() => _breedingStatus = selection.first);

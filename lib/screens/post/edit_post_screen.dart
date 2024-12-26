@@ -51,12 +51,12 @@ class _EditPostScreenState extends State<EditPostScreen> {
 
   Future<void> _submit() async {
     if (!_formKey.currentState!.validate()) return;
-    if (_selectedImages.isEmpty && widget.post?.imageUrls.isEmpty != false) {
-      ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(content: Text('Please select at least one image')),
-      );
-      return;
-    }
+    // if (_selectedImages.isEmpty && widget.post?.imageUrls.isEmpty != false) {
+    //   ScaffoldMessenger.of(context).showSnackBar(
+    //     const SnackBar(content: Text('Please select at least one image')),
+    //   );
+    //   return;
+    // }
 
     setState(() => _isLoading = true);
 

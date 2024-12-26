@@ -16,13 +16,10 @@ enum NotificationType {
 
 class NotificationService {
   final FirebaseMessaging _messaging = FirebaseMessaging.instance;
-  final FlutterLocalNotificationsPlugin _localNotifications =
-      FlutterLocalNotificationsPlugin();
-  final FirestoreService _firestoreService;
-  final StreamController<RemoteMessage> _messageStreamController =
-      StreamController.broadcast();
+  final FlutterLocalNotificationsPlugin _localNotifications = FlutterLocalNotificationsPlugin();
+  final StreamController<RemoteMessage> _messageStreamController = StreamController.broadcast();
 
-  NotificationService(this._firestoreService);
+  NotificationService();
 
   Stream<RemoteMessage> get onMessageStream => _messageStreamController.stream;
 
@@ -111,6 +108,54 @@ class NotificationService {
       final data = json.decode(response.payload!) as Map<String, dynamic>;
       // TODO: Handle navigation based on notification type
       print('Notification tapped with data: $data');
+
+      // final type = NotificationType.values.firstWhere(
+      //   (e) => e.toString() == data['type'],
+      //   orElse: () => NotificationType.chat,
+      // );
+
+      // // Get the global navigator key from the app
+      // final context = navigatorKey.currentContext;
+      // if (context == null) return;
+
+      // switch (type) {
+      //   case NotificationType.chat:
+      //     final roomId = data['roomId'] as String;
+      //     Navigator.pushNamed(
+      //       context,
+      //       '/chat/detail',
+      //       arguments: roomId,
+      //     );
+      //     break;
+
+      //   case NotificationType.like:
+      //   case NotificationType.comment:
+      //     final postId = data['postId'] as String;
+      //     Navigator.pushNamed(
+      //       context,
+      //       '/post/detail',
+      //       arguments: postId,
+      //     );
+      //     break;
+
+      //   case NotificationType.breeding:
+      //     final catId = data['catId'] as String;
+      //     Navigator.pushNamed(
+      //       context,
+      //       '/cat/detail',
+      //       arguments: catId,
+      //     );
+      //     break;
+
+      //   case NotificationType.follow:
+      //     final followerId = data['followerId'] as String;
+      //     Navigator.pushNamed(
+      //       context,
+      //       '/profile',
+      //       arguments: followerId,
+      //     );
+      //     break;
+      // }
     }
   }
 

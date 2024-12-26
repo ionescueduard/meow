@@ -1,9 +1,12 @@
 import 'package:flutter/material.dart';
 import 'package:cached_network_image/cached_network_image.dart';
+import 'package:provider/provider.dart';
 import 'package:timeago/timeago.dart' as timeago;
 import '../models/post_model.dart';
 import '../models/user_model.dart';
 import '../services/firestore_service.dart';
+import '../services/auth_service.dart';
+import '../screens/post/edit_post_screen.dart';
 
 class PostCard extends StatelessWidget {
   final PostModel post;
@@ -22,6 +25,148 @@ class PostCard extends StatelessWidget {
     this.onShare,
     this.isLiked = false,
   });
+
+  void _showOptionsMenu(BuildContext context) {
+    final currentUser = Provider.of<AuthService>(context, listen: false).currentUser;
+    final isAuthor = currentUser?.uid == author.id;
+
+    showModalBottomSheet(
+      context: context,
+      builder: (context) {
+        return SafeArea(
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              if (isAuthor) ...[
+                ListTile(
+                  leading: const Icon(Icons.edit),
+                  title: const Text('Edit Post'),
+                  onTap: () {
+                    Navigator.pop(context);
+                    Navigator.push(
+                      context,
+                      MaterialPageRoute(
+                        builder: (context) => EditPostScreen(post: post),
+                      ),
+                    );
+                  },
+                ),
+                ListTile(
+                  leading: const Icon(Icons.delete),
+                  title: const Text('Delete Post'),
+                  onTap: () async {
+                    Navigator.pop(context);
+                    final confirm = await showDialog<bool>(
+                      context: context,
+                      builder: (context) => AlertDialog(
+                        title: const Text('Delete Post'),
+                        content: const Text('Are you sure you want to delete this post?'),
+                        actions: [
+                          TextButton(
+                            onPressed: () => Navigator.pop(context, false),
+                            child: const Text('Cancel'),
+                          ),
+                          TextButton(
+                            onPressed: () => Navigator.pop(context, true),
+                            child: const Text('Delete'),
+                          ),
+                        ],
+                      ),
+                    );
+
+                    if (confirm == true) {
+                      await context.read<FirestoreService>().deletePost(post.id);
+                    }
+                  },
+                ),
+              ],
+              ListTile(
+                leading: const Icon(Icons.share),
+                title: const Text('Share'),
+                onTap: () {
+                  Navigator.pop(context);
+                  ScaffoldMessenger.of(context).showSnackBar(
+                    const SnackBar(
+                      content: Text('Share feature coming soon!'),
+                    ),
+                  );
+                },
+              ),
+              ListTile(
+                leading: const Icon(Icons.report),
+                title: const Text('Report'),
+                onTap: () {
+                  Navigator.pop(context);
+                  _showReportDialog(context);
+                },
+              ),
+            ],
+          ),
+        );
+      },
+    );
+  }
+
+  void _showReportDialog(BuildContext context) {
+    showDialog(
+      context: context,
+      builder: (context) => AlertDialog(
+        title: const Text('Report Post'),
+        content: Column(
+          mainAxisSize: MainAxisSize.min,
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            const Text('Why are you reporting this post?'),
+            const SizedBox(height: 16),
+            _buildReportOption(context, 'Inappropriate content'),
+            _buildReportOption(context, 'Spam'),
+            _buildReportOption(context, 'Harassment'),
+            _buildReportOption(context, 'False information'),
+            _buildReportOption(context, 'Other'),
+          ],
+        ),
+      ),
+    );
+  }
+
+  Widget _buildReportOption(BuildContext context, String reason) {
+    return InkWell(
+      onTap: () async {
+        Navigator.pop(context);
+        await _submitReport(context, reason);
+      },
+      child: Container(
+        width: double.infinity,
+        padding: const EdgeInsets.symmetric(
+          vertical: 12,
+          horizontal: 8,
+        ),
+        child: Text(reason),
+      ),
+    );
+  }
+
+  Future<void> _submitReport(BuildContext context, String reason) async {
+    try {
+      await context.read<FirestoreService>().reportPost(
+        postId: post.id,
+        userId: context.read<AuthService>().currentUser!.uid,
+        reason: reason,
+      );
+      
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(
+          content: Text('Thank you for reporting this post. We will review it.'),
+        ),
+      );
+    } catch (e) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(
+          content: Text('Failed to submit report. Please try again.'),
+        ),
+      );
+    }
+  }
 
   @override
   Widget build(BuildContext context) {
@@ -50,9 +195,7 @@ class PostCard extends StatelessWidget {
             ),
             trailing: IconButton(
               icon: const Icon(Icons.more_vert),
-              onPressed: () {
-                // TODO: Show post options menu
-              },
+              onPressed: () => _showOptionsMenu(context),
             ),
           ),
 

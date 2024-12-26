@@ -4,6 +4,7 @@ import '../models/cat_model.dart';
 import '../models/post_model.dart';
 import '../models/comment_model.dart';
 import 'notification_service.dart';
+//import 'package:geolocator/geolocator.dart';
 
 class FirestoreService {
   final FirebaseFirestore _db = FirebaseFirestore.instance;
@@ -52,20 +53,55 @@ class FirestoreService {
   }
 
   Stream<List<CatModel>> searchCats({
-    String? breed,
-    String? gender,
-    bool? availableForBreeding,
+    CatBreed? breed,
+    CatGender? gender,
+    BreedingStatus? breedingStatus,
+    Map<String, dynamic>? location,
   }) {
     Query query = _db.collection('cats');
 
     if (breed != null) {
-      query = query.where('breed', isEqualTo: breed);
+      query = query.where('breed', isEqualTo: breed.toString().split('.').last);
     }
     if (gender != null) {
-      query = query.where('gender', isEqualTo: gender);
+      query = query.where('gender', isEqualTo: gender.toString().split('.').last);
     }
-    if (availableForBreeding != null) {
-      query = query.where('availableForBreeding', isEqualTo: availableForBreeding);
+    if (breedingStatus != null) {
+      query = query.where('breedingStatus', isEqualTo: breedingStatus.toString().split('.').last);
+    }
+
+      if (location != null) {
+      print('Searching by location not yet implemented');
+
+    //import 'package:geolocator/geolocator.dart';
+    // return query.snapshots().map((snapshot) {
+    //   final cats = snapshot.docs
+    //       .map((doc) => CatModel.fromMap(doc.data() as Map<String, dynamic>))
+    //       .toList();
+
+    //   if (location != null) {
+    //     final userLat = location['latitude'] as double;
+    //     final userLng = location['longitude'] as double;
+    //     final maxDistance = location['maxDistance'] as double;
+
+    //     // Filter cats by distance
+    //     return cats.where((cat) {
+    //       if (cat.location == null) return false;
+
+    //       final distance = Geolocator.distanceBetween(
+    //         userLat,
+    //         userLng,
+    //         cat.location!.latitude,
+    //         cat.location!.longitude,
+    //       );
+
+    //       // Convert distance from meters to kilometers
+    //       return distance / 1000 <= maxDistance;
+    //     }).toList();
+    //   }
+
+    //   return cats;
+    // });
     }
 
     return query.snapshots().map((snapshot) => snapshot.docs
@@ -275,5 +311,110 @@ class FirestoreService {
     );
 
     await savePost(updatedPost);
+  }
+
+  Stream<List<CatModel>> getUserCatsStream(String userId) {
+    return _db
+        .collection('cats')
+        .where('userId', isEqualTo: userId)
+        .snapshots()
+        .map((snapshot) => snapshot.docs
+            .map((doc) => CatModel.fromMap(doc.data()))
+            .toList());
+  }
+
+  // Breeding Requests
+  Future<void> sendBreedingRequest({
+    required String catId,
+    required String requesterId,
+    required String requestMessage,
+    required String requesterCatId,
+  }) async {
+    final batch = _db.batch();
+    final requestId = _db.collection('breedingRequests').doc().id;
+
+    final request = {
+      'id': requestId,
+      'catId': catId,
+      'requesterId': requesterId,
+      'requesterCatId': requesterCatId,
+      'message': requestMessage,
+      'status': 'pending',
+      'createdAt': FieldValue.serverTimestamp(),
+    };
+
+    batch.set(
+      _db.collection('breedingRequests').doc(requestId),
+      request,
+    );
+
+    await batch.commit();
+
+    // Get cat and requester info for notification
+    final cat = await getCat(catId);
+    final requester = await getUser(requesterId);
+    
+    if (cat != null && requester != null) {
+      await _notificationService.sendBreedingRequestNotification(
+        userId: cat.ownerId,
+        catId: catId,
+        requester: requester,
+      );
+    }
+  }
+
+  Stream<List<Map<String, dynamic>>> getBreedingRequests(String userId) {
+    return _db
+        .collection('breedingRequests')
+        .where('status', isEqualTo: 'pending')
+        .snapshots()
+        .asyncMap((snapshot) async {
+      final requests = <Map<String, dynamic>>[];
+      
+      for (final doc in snapshot.docs) {
+        final data = doc.data();
+        final cat = await getCat(data['catId']);
+        final requester = await getUser(data['requesterId']);
+        final requesterCat = await getCat(data['requesterCatId']);
+        
+        if (cat != null && requester != null && requesterCat != null) {
+          if (cat.ownerId == userId || data['requesterId'] == userId) {
+            requests.add({
+              ...data,
+              'cat': cat,
+              'requester': requester,
+              'requesterCat': requesterCat,
+            });
+          }
+        }
+      }
+      
+      return requests;
+    });
+  }
+
+  Future<void> updateBreedingRequestStatus(String requestId, String status) async {
+    await _db.collection('breedingRequests').doc(requestId).update({
+      'status': status,
+      'updatedAt': FieldValue.serverTimestamp(),
+    });
+  }
+
+  Future<void> reportPost({ // handle these better in the future
+    required String postId,
+    required String userId,
+    required String reason,
+  }) async {
+    final reportId = _db.collection('reports').doc().id;
+
+    final report = {
+      'id': reportId,
+      'postId': postId,
+      'userId': userId,
+      'reason': reason,
+      'createdAt': FieldValue.serverTimestamp(),
+    };
+
+    await _db.collection('reports').doc(reportId).set(report);
   }
 } 

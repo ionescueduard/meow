@@ -1,12 +1,25 @@
-enum CatGender { male, female }
+enum CatGender {
+  male,
+  female,
+}
 
-enum BreedingStatus { available, notAvailable }
+enum BreedingStatus {
+  available,
+  notAvailable,
+}
+
+enum CatBreed {
+  persian,
+  siamese,
+  maineCoon,
+  britishShorthair,
+}
 
 class CatModel {
   final String id;
   final String ownerId;
   final String name;
-  final String breed;
+  final CatBreed breed;
   final DateTime birthDate;
   final CatGender gender;
   List<String> photoUrls;
@@ -40,7 +53,7 @@ class CatModel {
       'id': id,
       'ownerId': ownerId,
       'name': name,
-      'breed': breed,
+      'breed': breed.toString().split('.').last,
       'birthDate': birthDate.toIso8601String(),
       'gender': gender.toString().split('.').last,
       'photoUrls': photoUrls,
@@ -57,7 +70,9 @@ class CatModel {
       id: map['id'] as String,
       ownerId: map['ownerId'] as String,
       name: map['name'] as String,
-      breed: map['breed'] as String,
+      breed: CatBreed.values.firstWhere(
+        (e) => e.toString().split('.').last == map['breed'],
+      ),
       birthDate: DateTime.parse(map['birthDate'] as String),
       gender: CatGender.values.firstWhere(
         (e) => e.toString().split('.').last == map['gender'],
@@ -75,7 +90,7 @@ class CatModel {
 
   CatModel copyWith({
     String? name,
-    String? breed,
+    CatBreed? breed,
     DateTime? birthDate,
     CatGender? gender,
     List<String>? photoUrls,
