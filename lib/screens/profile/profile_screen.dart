@@ -43,7 +43,7 @@ class _ProfileScreenState extends State<ProfileScreen> {
         bio: _bioController.text.trim(),
       );
 
-      await context.read<FirestoreService>().updateUser(updatedUser);
+      await context.read<FirestoreService>().saveUser(updatedUser);
       setState(() => _isEditing = false);
     } finally {
       setState(() => _isLoading = false);
@@ -63,9 +63,9 @@ class _ProfileScreenState extends State<ProfileScreen> {
       final firestoreService = context.read<FirestoreService>();
 
       // Upload new photo
-      final photoUrl = await storageService.uploadFile(
+      final photoUrl = await storageService.uploadUserProfilePhoto(
         File(image.path),
-        storageService.getStoragePath(user.id, 'profile'),
+        user.id,
       );
 
       // Delete old photo if exists
@@ -75,7 +75,7 @@ class _ProfileScreenState extends State<ProfileScreen> {
 
       // Update user profile
       final updatedUser = user.copyWith(photoUrl: photoUrl);
-      await firestoreService.updateUser(updatedUser);
+      await firestoreService.saveUser(updatedUser);
     } finally {
       setState(() => _isLoading = false);
     }
@@ -258,7 +258,7 @@ class _ProfileScreenState extends State<ProfileScreen> {
               StreamBuilder<List<CatModel>>(
                 stream: context
                     .read<FirestoreService>()
-                    .getUserCatsStream(user.id), // TODO: Add this method to FirestoreService
+                    .getUserCats(user.id),
                 builder: (context, catsSnapshot) {
                   if (catsSnapshot.connectionState == ConnectionState.waiting) {
                     return const Center(child: CircularProgressIndicator());

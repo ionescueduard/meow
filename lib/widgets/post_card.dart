@@ -64,14 +64,14 @@ class PostCard extends StatelessWidget {
             ),
 
           // Post media
-          if (post.mediaUrls.isNotEmpty)
+          if (post.imageUrls.isNotEmpty)
             SizedBox(
               height: 300,
               child: PageView.builder(
-                itemCount: post.mediaUrls.length,
+                itemCount: post.imageUrls.length,
                 itemBuilder: (context, index) {
                   return CachedNetworkImage(
-                    imageUrl: post.mediaUrls[index],
+                    imageUrl: post.imageUrls[index],
                     fit: BoxFit.cover,
                     placeholder: (context, url) => const Center(
                       child: CircularProgressIndicator(),

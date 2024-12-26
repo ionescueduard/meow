@@ -82,7 +82,7 @@ class _BreedingScreenState extends State<BreedingScreen> {
         // Results
         Expanded(
           child: StreamBuilder<List<CatModel>>(
-            stream: firestoreService.getAvailableBreedingCats(),
+            stream: firestoreService.searchCats(availableForBreeding: true),
             builder: (context, snapshot) {
               if (snapshot.connectionState == ConnectionState.waiting) {
                 return const Center(child: CircularProgressIndicator());

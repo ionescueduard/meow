@@ -27,9 +27,9 @@ class ChatMessageModel {
     this.referencedCatId,
   });
 
-  factory ChatMessageModel.fromMap(Map<String, dynamic> map, String id) {
+  factory ChatMessageModel.fromMap(Map<String, dynamic> map) {
     return ChatMessageModel(
-      id: id,
+      id: map['id'] as String,
       roomId: map['roomId'] as String,
       senderId: map['senderId'] as String,
       content: map['content'] as String,
@@ -44,6 +44,7 @@ class ChatMessageModel {
 
   Map<String, dynamic> toMap() {
     return {
+      'id': id,
       'roomId': roomId,
       'senderId': senderId,
       'content': content,

@@ -1,66 +1,61 @@
 import 'dart:io';
 import 'package:firebase_storage/firebase_storage.dart';
-import 'package:uuid/uuid.dart';
 import 'package:path/path.dart' as path;
 
 class StorageService {
   final FirebaseStorage _storage = FirebaseStorage.instance;
-  final _uuid = const Uuid();
 
-  Future<String> uploadFile(File file, String folder) async {
-    final String fileName = '${_uuid.v4()}${path.extension(file.path)}';
-    final Reference ref = _storage.ref().child('$folder/$fileName');
-    
-    final UploadTask uploadTask = ref.putFile(
-      file,
-      SettableMetadata(
-        contentType: 'image/${path.extension(file.path).replaceAll('.', '')}',
-      ),
-    );
-
-    final TaskSnapshot snapshot = await uploadTask;
-    final String downloadUrl = await snapshot.ref.getDownloadURL();
-    return downloadUrl;
+  Future<String> uploadUserProfilePhoto(File file, String userId) async {
+    final ref = _storage.ref().child('users/$userId/profile.${path.extension(file.path)}');
+    final uploadTask = ref.putFile(file);
+    final snapshot = await uploadTask;
+    return await snapshot.ref.getDownloadURL();
   }
 
-  Future<List<String>> uploadFiles(List<File> files, String folder) async {
-    final List<String> downloadUrls = [];
-    
-    for (final file in files) {
-      final url = await uploadFile(file, folder);
-      downloadUrls.add(url);
-    }
-    
-    return downloadUrls;
+  Future<String> uploadCatImage(File file, String catId) async {
+    final fileName = '${DateTime.now().millisecondsSinceEpoch}${path.extension(file.path)}';
+    final ref = _storage.ref().child('cats/$catId/$fileName');
+    final uploadTask = ref.putFile(file);
+    final snapshot = await uploadTask;
+    return await snapshot.ref.getDownloadURL();
   }
 
-  Future<void> deleteFile(String fileUrl) async {
+  Future<String> uploadPostImage(File file) async {
+    final fileName = '${DateTime.now().millisecondsSinceEpoch}${path.extension(file.path)}';
+    final ref = _storage.ref().child('posts/$fileName');
+    final uploadTask = ref.putFile(file);
+    final snapshot = await uploadTask;
+    return await snapshot.ref.getDownloadURL();
+  }
+
+  Future<void> deleteFile(String url) async {
     try {
-      final Reference ref = _storage.refFromURL(fileUrl);
+      final ref = _storage.refFromURL(url);
       await ref.delete();
     } catch (e) {
-      // Handle or rethrow the error
-      rethrow;
+      // Handle or log error
+      print('Error deleting file: $e');
     }
   }
 
-  Future<void> deleteFiles(List<String> fileUrls) async {
-    for (final url in fileUrls) {
-      await deleteFile(url);
+  Future<void> deleteUserAvatar(String userId) async {
+    try {
+      final ref = _storage.ref().child('users/$userId/avatar');
+      await ref.delete();
+    } catch (e) {
+      // Handle or log error
+      print('Error deleting avatar: $e');
     }
   }
 
-  // Helper method to generate storage paths for different types of content
-  String getStoragePath(String userId, String type) {
-    switch (type) {
-      case 'profile':
-        return 'users/$userId/profile';
-      case 'cat':
-        return 'users/$userId/cats';
-      case 'post':
-        return 'users/$userId/posts';
-      default:
-        return 'users/$userId/misc';
+  Future<void> deleteCatImages(String catId) async {
+    try {
+      final ref = _storage.ref().child('cats/$catId');
+      final result = await ref.listAll();
+      await Future.wait(result.items.map((item) => item.delete()));
+    } catch (e) {
+      // Handle or log error
+      print('Error deleting cat images: $e');
     }
   }
 } 

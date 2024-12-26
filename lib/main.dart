@@ -1,3 +1,4 @@
+import 'package:firebase_auth/firebase_auth.dart';
 import 'package:firebase_core/firebase_core.dart';
 import 'package:flutter/material.dart';
 import 'package:meow/services/chat_service.dart';
@@ -5,6 +6,9 @@ import 'package:meow/services/firestore_service.dart';
 import 'package:meow/services/storage_service.dart';
 import 'package:provider/provider.dart';
 import 'services/auth_service.dart';
+import 'services/firestore_service.dart';
+import 'services/storage_service.dart';
+import 'services/chat_service.dart';
 import 'services/notification_service.dart';
 import 'package:flutter/foundation.dart' show kIsWeb;
 import 'config/theme.dart';
@@ -15,7 +19,7 @@ import 'package:firebase_auth/firebase_auth.dart';
 
 void main() async {
   WidgetsFlutterBinding.ensureInitialized();
-  
+
   if (kIsWeb) {
     await Firebase.initializeApp(
       options: DefaultFirebaseOptions.currentPlatform,
@@ -23,35 +27,7 @@ void main() async {
   } else {
     await Firebase.initializeApp();
   }
-  
-  final notificationService = NotificationService();
-  await notificationService.initialize();
-  
-  runApp(
-    MultiProvider(
-      providers: [
-        ChangeNotifierProvider(create: (_) => AuthService()),
-
-        Provider.value(value: notificationService),
-
-        Provider<FirestoreService>(
-          create: (_) => FirestoreService()
-        ),
-
-        Provider<StorageService>(
-          create: (_) => StorageService()
-        ),
-
-        Provider<ChatService>(
-          create: (context) => ChatService(
-            context.read<StorageService>(),
-            context.read<NotificationService>(),
-          ),
-        ),
-      ],
-      child: const MeowApp(),
-    ),
-  );
+  runApp(const MeowApp());
 }
 
 class MeowApp extends StatelessWidget {
@@ -59,31 +35,78 @@ class MeowApp extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return MaterialApp(
-      title: 'Meow - Cat Breeding App',
-      theme: AppTheme.lightTheme,
-      darkTheme: AppTheme.darkTheme,
-      themeMode: ThemeMode.system,
-      debugShowCheckedModeBanner: false,
-      home: StreamBuilder<User?>(
-        stream: FirebaseAuth.instance.authStateChanges(),
-        builder: (context, snapshot) {
-          if (snapshot.connectionState == ConnectionState.waiting) {
-            return const Center(
-              child: CircularProgressIndicator(),
+    return MultiProvider(
+      providers: [
+        Provider<StorageService>(
+          create: (_) => StorageService(),
+        ),
+        Provider<NotificationService>(
+          create: (context) => NotificationService(
+            context.read<FirestoreService>(),
+          ),
+        ),
+        Provider<FirestoreService>(
+          create: (context) => FirestoreService(
+            context.read<NotificationService>(),
+          ),
+        ),
+        Provider<ChatService>(
+          create: (context) => ChatService(
+            context.read<StorageService>(),
+            context.read<NotificationService>(),
+          ),
+        ),
+        Provider<AuthService>(
+          create: (context) => AuthService(),
+        ),
+      ],
+      child: MaterialApp(
+        title: 'Meow - Cat Breeding App',
+        theme: AppTheme.lightTheme,
+        darkTheme: AppTheme.darkTheme,
+        home: FutureBuilder(
+          future: _initializeApp(context),
+          builder: (context, snapshot) {
+            if (snapshot.connectionState == ConnectionState.waiting) {
+              return const Center(child: CircularProgressIndicator());
+            }
+
+            return StreamBuilder<User?>(
+              stream: context.read<AuthService>().authStateChanges,
+              builder: (context, snapshot) {
+                if (snapshot.connectionState == ConnectionState.waiting) {
+                  return const Center(child: CircularProgressIndicator());
+                }
+
+                if (snapshot.hasData) {
+                  return const HomeScreen();
+                }
+
+                return const LoginScreen();
+              },
             );
-          }
-
-          if (snapshot.hasData) {
-            // Save FCM token when user is logged in
-            final userId = snapshot.data!.uid;
-            context.read<NotificationService>().saveToken(userId);
-            return const HomeScreen();
-          }
-
-          return const LoginScreen();
-        },
+          },
+        ),
       ),
     );
+  }
+
+  Future<void> _initializeApp(BuildContext context) async {
+    // Initialize notification service
+    await context.read<NotificationService>().initialize();
+
+    // Subscribe to user-specific notifications when signed in
+    context.read<AuthService>().authStateChanges.listen((user) {
+      final notificationService = context.read<NotificationService>();
+      if (user != null) {
+        notificationService.subscribeToUserTopics(user.uid);
+      } else {
+        // Unsubscribe from previous user's topics if any
+        final previousUser = context.read<AuthService>().currentUser;
+        if (previousUser != null) {
+          notificationService.unsubscribeFromUserTopics(previousUser.uid);
+        }
+      }
+    });
   }
 }

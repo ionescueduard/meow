@@ -52,10 +52,7 @@ class CatModel {
     };
   }
 
-  factory CatModel.fromMap(Map<String, dynamic>? map) {
-    if (map == null) {
-      throw ArgumentError('The map cannot be null');
-    }
+  factory CatModel.fromMap(Map<String, dynamic> map) {
     return CatModel(
       id: map['id'] as String,
       ownerId: map['ownerId'] as String,

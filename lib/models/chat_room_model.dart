@@ -17,9 +17,9 @@ class ChatRoomModel {
     required this.unreadCount,
   });
 
-  factory ChatRoomModel.fromMap(Map<String, dynamic> map, String id) {
+  factory ChatRoomModel.fromMap(Map<String, dynamic> map) {
     return ChatRoomModel(
-      id: id,
+      id: map['id'] as String,
       participantIds: List<String>.from(map['participantIds'] as List),
       lastMessageTime: (map['lastMessageTime'] as Timestamp).toDate(),
       lastMessageText: map['lastMessageText'] as String?,
@@ -30,6 +30,7 @@ class ChatRoomModel {
 
   Map<String, dynamic> toMap() {
     return {
+      'id': id,
       'participantIds': participantIds,
       'lastMessageTime': Timestamp.fromDate(lastMessageTime),
       'lastMessageText': lastMessageText,
