@@ -277,7 +277,7 @@ class _ProfileScreenState extends State<ProfileScreen> {
               StreamBuilder<List<CatModel>>(
                 stream: context
                     .read<FirestoreService>()
-                    .getUserCatsStream(user.id),
+                    .getUserCats(user.id),
                 builder: (context, catsSnapshot) {
                   if (catsSnapshot.connectionState == ConnectionState.waiting) {
                     return const Center(child: CircularProgressIndicator());

@@ -29,17 +29,49 @@ class FirestoreService {
 
   // Cats
   Future<void> saveCat(CatModel cat) async {
+    // Save the cat
     await _db.collection('cats').doc(cat.id).set(cat.toMap());
+
+    // Update user's catIds
+    final userDoc = await _db.collection('users').doc(cat.ownerId).get();
+    if (userDoc.exists) {
+      final userData = userDoc.data()!;
+      final currentCatIds = List<String>.from(userData['catIds'] ?? []);
+      if (!currentCatIds.contains(cat.id)) {
+        currentCatIds.add(cat.id);
+        await _db.collection('users').doc(cat.ownerId).update({
+          'catIds': currentCatIds,
+        });
+      }
+    }
   }
 
   Future<void> deleteCat(String catId) async {
+    // Get the cat to find the owner
+    final catDoc = await _db.collection('cats').doc(catId).get();
+    if (catDoc.exists) {
+      final cat = CatModel.fromMap(catDoc.data()!);
+      
+      // Remove cat from user's catIds
+      final userDoc = await _db.collection('users').doc(cat.ownerId).get();
+      if (userDoc.exists) {
+        final userData = userDoc.data()!;
+        final currentCatIds = List<String>.from(userData['catIds'] ?? []);
+        currentCatIds.remove(catId);
+        await _db.collection('users').doc(cat.ownerId).update({
+          'catIds': currentCatIds,
+        });
+      }
+    }
+
+    // Delete the cat
     await _db.collection('cats').doc(catId).delete();
   }
 
   Stream<List<CatModel>> getUserCats(String userId) {
     return _db
         .collection('cats')
-        .where('userId', isEqualTo: userId)
+        .where('ownerId', isEqualTo: userId)
         .snapshots()
         .map((snapshot) => snapshot.docs
             .map((doc) => CatModel.fromMap(doc.data()))
@@ -311,16 +343,6 @@ class FirestoreService {
     );
 
     await savePost(updatedPost);
-  }
-
-  Stream<List<CatModel>> getUserCatsStream(String userId) {
-    return _db
-        .collection('cats')
-        .where('userId', isEqualTo: userId)
-        .snapshots()
-        .map((snapshot) => snapshot.docs
-            .map((doc) => CatModel.fromMap(doc.data()))
-            .toList());
   }
 
   // Breeding Requests
