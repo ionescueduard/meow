@@ -64,15 +64,6 @@ class _HomeScreenState extends State<HomeScreen> {
           ),
         ],
       ),
-      floatingActionButton: FloatingActionButton(
-              onPressed: () {
-          // TODO: Implement post creation
-                ScaffoldMessenger.of(context).showSnackBar(
-                  const SnackBar(content: Text('Create post coming soon!')),
-                );
-              },
-              child: const Icon(Icons.add),
-      ),
     );
   }
 } 

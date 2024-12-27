@@ -8,7 +8,7 @@ import '../models/cat_model.dart';
 import '../services/firestore_service.dart';
 import '../services/auth_service.dart';
 import '../screens/post/edit_post_screen.dart';
-import '../screens/profile/user_profile_screen.dart';
+import '../screens/profile/profile_screen.dart';
 import '../screens/cat/cat_details_screen.dart';
 
 class PostCard extends StatelessWidget {
@@ -175,7 +175,7 @@ class PostCard extends StatelessWidget {
     Navigator.push(
       context,
       MaterialPageRoute(
-        builder: (context) => UserProfileScreen(user: author),
+        builder: (context) => ProfileScreen(userId: author.id),
       ),
     );
   }

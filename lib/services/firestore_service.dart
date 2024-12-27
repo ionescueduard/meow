@@ -276,89 +276,114 @@ class FirestoreService {
   // Following/Followers
   Future<void> followUser(String userId, String followerId) async {
     final batch = _db.batch();
-
-    batch.set(
-      _db.collection('users').doc(userId).collection('followers').doc(followerId),
-      {'timestamp': FieldValue.serverTimestamp()},
+    
+    // Get both users
+    final userDoc = await _db.collection('users').doc(userId).get();
+    final followerDoc = await _db.collection('users').doc(followerId).get();
+    
+    if (!userDoc.exists || !followerDoc.exists) return;
+    
+    final user = UserModel.fromMap(userDoc.data()!);
+    final follower = UserModel.fromMap(followerDoc.data()!);
+    
+    // Update the target user's followers list
+    final updatedUser = user.copyWith(
+      followers: List.from(user.followers)..add(followerId),
     );
-
-    batch.set(
-      _db.collection('users').doc(followerId).collection('following').doc(userId),
-      {'timestamp': FieldValue.serverTimestamp()},
+    
+    // Update the follower's following list
+    final updatedFollower = follower.copyWith(
+      following: List.from(follower.following)..add(userId),
     );
-
+    
+    batch.set(_db.collection('users').doc(userId), updatedUser.toMap());
+    batch.set(_db.collection('users').doc(followerId), updatedFollower.toMap());
+    
     await batch.commit();
 
     // Send notification
-    final follower = await getUser(followerId);
-    if (follower != null) {
-      await _notificationService.sendFollowNotification(
-        userId: userId,
-        follower: follower,
-      );
-    }
+    await _notificationService.sendFollowNotification(
+      userId: userId,
+      follower: follower,
+    );
   }
 
   Future<void> unfollowUser(String userId, String followerId) async {
-    await _db
-        .collection('users')
-        .doc(userId)
-        .collection('followers')
-        .doc(followerId)
-        .delete();
-
-    await _db
-        .collection('users')
-        .doc(followerId)
-        .collection('following')
-        .doc(userId)
-        .delete();
+    final batch = _db.batch();
+    
+    // Get both users
+    final userDoc = await _db.collection('users').doc(userId).get();
+    final followerDoc = await _db.collection('users').doc(followerId).get();
+    
+    if (!userDoc.exists || !followerDoc.exists) return;
+    
+    final user = UserModel.fromMap(userDoc.data()!);
+    final follower = UserModel.fromMap(followerDoc.data()!);
+    
+    // Update the target user's followers list
+    final updatedUser = user.copyWith(
+      followers: List.from(user.followers)..remove(followerId),
+    );
+    
+    // Update the follower's following list
+    final updatedFollower = follower.copyWith(
+      following: List.from(follower.following)..remove(userId),
+    );
+    
+    batch.set(_db.collection('users').doc(userId), updatedUser.toMap());
+    batch.set(_db.collection('users').doc(followerId), updatedFollower.toMap());
+    
+    await batch.commit();
   }
 
   Stream<bool> isFollowing(String userId, String followerId) {
     return _db
         .collection('users')
         .doc(userId)
-        .collection('followers')
-        .doc(followerId)
         .snapshots()
-        .map((doc) => doc.exists);
+        .map((doc) {
+          if (!doc.exists) return false;
+          final user = UserModel.fromMap(doc.data()!);
+          return user.followers.contains(followerId);
+        });
   }
 
   Stream<List<UserModel>> getFollowers(String userId) {
     return _db
         .collection('users')
         .doc(userId)
-        .collection('followers')
         .snapshots()
-        .asyncMap((snapshot) async {
-      final followers = <UserModel>[];
-      for (final doc in snapshot.docs) {
-        final user = await getUser(doc.id);
-        if (user != null) {
-          followers.add(user);
-        }
-      }
-      return followers;
-    });
+        .asyncMap((doc) async {
+          if (!doc.exists) return [];
+          final user = UserModel.fromMap(doc.data()!);
+          final followers = <UserModel>[];
+          for (final followerId in user.followers) {
+            final follower = await getUser(followerId);
+            if (follower != null) {
+              followers.add(follower);
+            }
+          }
+          return followers;
+        });
   }
 
   Stream<List<UserModel>> getFollowing(String userId) {
     return _db
         .collection('users')
         .doc(userId)
-        .collection('following')
         .snapshots()
-        .asyncMap((snapshot) async {
-      final following = <UserModel>[];
-      for (final doc in snapshot.docs) {
-        final user = await getUser(doc.id);
-        if (user != null) {
-          following.add(user);
-        }
-      }
-      return following;
-    });
+        .asyncMap((doc) async {
+          if (!doc.exists) return [];
+          final user = UserModel.fromMap(doc.data()!);
+          final following = <UserModel>[];
+          for (final followingId in user.following) {
+            final followedUser = await getUser(followingId);
+            if (followedUser != null) {
+              following.add(followedUser);
+            }
+          }
+          return following;
+        });
   }
 
   Future<void> likePost(String postId, String userId) async {

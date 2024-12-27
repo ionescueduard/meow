@@ -2,12 +2,12 @@ class UserModel {
   final String id;
   final String email;
   final String name;
-  String? photoUrl;
-  String? location;
-  String? bio;
-  List<String> catIds;
-  DateTime createdAt;
-  DateTime updatedAt;
+  final String? photoUrl;
+  final String? location;
+  final String? bio;
+  final List<String> catIds;
+  final List<String> followers;
+  final List<String> following;
 
   UserModel({
     required this.id,
@@ -17,25 +17,11 @@ class UserModel {
     this.location,
     this.bio,
     List<String>? catIds,
-    DateTime? createdAt,
-    DateTime? updatedAt,
+    List<String>? followers,
+    List<String>? following,
   })  : catIds = catIds ?? [],
-        createdAt = createdAt ?? DateTime.now(),
-        updatedAt = updatedAt ?? DateTime.now();
-
-  Map<String, dynamic> toMap() {
-    return {
-      'id': id,
-      'email': email,
-      'name': name,
-      'photoUrl': photoUrl,
-      'location': location,
-      'bio': bio,
-      'catIds': catIds,
-      'createdAt': createdAt.toIso8601String(),
-      'updatedAt': updatedAt.toIso8601String(),
-    };
-  }
+        followers = followers ?? [],
+        following = following ?? [];
 
   factory UserModel.fromMap(Map<String, dynamic> map) {
     return UserModel(
@@ -46,28 +32,46 @@ class UserModel {
       location: map['location'] as String?,
       bio: map['bio'] as String?,
       catIds: List<String>.from(map['catIds'] ?? []),
-      createdAt: DateTime.parse(map['createdAt'] as String),
-      updatedAt: DateTime.parse(map['updatedAt'] as String),
+      followers: List<String>.from(map['followers'] ?? []),
+      following: List<String>.from(map['following'] ?? []),
     );
   }
 
+  Map<String, dynamic> toMap() {
+    return {
+      'id': id,
+      'email': email,
+      'name': name,
+      'photoUrl': photoUrl,
+      'location': location,
+      'bio': bio,
+      'catIds': catIds,
+      'followers': followers,
+      'following': following,
+    };
+  }
+
   UserModel copyWith({
+    String? id,
+    String? email,
     String? name,
     String? photoUrl,
     String? location,
     String? bio,
     List<String>? catIds,
+    List<String>? followers,
+    List<String>? following,
   }) {
     return UserModel(
-      id: id,
-      email: email,
+      id: id ?? this.id,
+      email: email ?? this.email,
       name: name ?? this.name,
       photoUrl: photoUrl ?? this.photoUrl,
       location: location ?? this.location,
       bio: bio ?? this.bio,
       catIds: catIds ?? this.catIds,
-      createdAt: createdAt,
-      updatedAt: DateTime.now(),
+      followers: followers ?? this.followers,
+      following: following ?? this.following,
     );
   }
 } 

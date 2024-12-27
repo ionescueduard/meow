@@ -25,43 +25,47 @@ class ChatService {
             .toList());
   }
 
-  Future<ChatRoomModel> createChatRoom(List<String> participantIds) async {
-    final chatRoom = ChatRoomModel(
-      id: DateTime.now().millisecondsSinceEpoch.toString(),
-      participantIds: participantIds,
-      lastMessageTime: DateTime.now(),
-      unreadCount: {for (var id in participantIds) id: 0},
-    );
-
-    await _db.collection('chatRooms').doc(chatRoom.id).set(chatRoom.toMap());
-    return chatRoom;
-  }
-
-  Future<ChatRoomModel?> getChatRoom(String roomId) async {
-    final doc = await _db.collection('chatRooms').doc(roomId).get();
-    if (!doc.exists) return null;
-    return ChatRoomModel.fromMap(doc.data()!);
-  }
-
-  Future<ChatRoomModel?> findExistingChatRoom(List<String> participantIds) async {
-    final snapshot = await _db
-        .collection('chatRooms')
-        .where('participantIds', isEqualTo: participantIds)
-        .get();
-
-    if (snapshot.docs.isEmpty) {
-      // Try with reversed participant order
-      final reversedSnapshot = await _db
-          .collection('chatRooms')
-          .where('participantIds', isEqualTo: participantIds.reversed.toList())
-          .get();
-
-      return reversedSnapshot.docs.isEmpty
-          ? null
-          : ChatRoomModel.fromMap(reversedSnapshot.docs.first.data());
+  Future<ChatRoomModel?> getChatRoom({String? roomId, List<String>? participantIds}) async {
+    if (roomId != null) {
+      final doc = await _db.collection('chatRooms').doc(roomId).get();
+      if (!doc.exists) return null;
+      return ChatRoomModel.fromMap(doc.data()!);
     }
 
-    return ChatRoomModel.fromMap(snapshot.docs.first.data());
+    if (participantIds != null) {
+      // Try to find existing room with given participants
+      final snapshot = await _db
+          .collection('chatRooms')
+          .where('participantIds', isEqualTo: participantIds)
+          .get();
+
+      if (snapshot.docs.isEmpty) {
+        // Try with reversed participant order
+        final reversedSnapshot = await _db
+            .collection('chatRooms')
+            .where('participantIds', isEqualTo: participantIds.reversed.toList())
+            .get();
+
+        if (reversedSnapshot.docs.isEmpty) {
+          // Create new chat room if none exists
+          final chatRoom = ChatRoomModel(
+            id: DateTime.now().millisecondsSinceEpoch.toString(),
+            participantIds: participantIds,
+            lastMessageTime: DateTime.now(),
+            unreadCount: {for (var id in participantIds) id: 0},
+          );
+
+          await _db.collection('chatRooms').doc(chatRoom.id).set(chatRoom.toMap());
+          return chatRoom;
+        }
+
+        return ChatRoomModel.fromMap(reversedSnapshot.docs.first.data());
+      }
+
+      return ChatRoomModel.fromMap(snapshot.docs.first.data());
+    }
+
+    throw ArgumentError('Either roomId or participantIds must be provided');
   }
 
   // Messages
@@ -108,7 +112,7 @@ class ChatService {
     );
 
     // Update chat room
-    final chatRoom = await getChatRoom(roomId);
+    final chatRoom = await getChatRoom(roomId: roomId);
     if (chatRoom != null) {
       final updatedUnreadCount = Map<String, int>.from(chatRoom.unreadCount);
       for (final participantId in chatRoom.participantIds) {
@@ -149,7 +153,7 @@ class ChatService {
     final batch = _db.batch();
 
     // Update unread count in chat room
-    final chatRoom = await getChatRoom(roomId);
+    final chatRoom = await getChatRoom(roomId: roomId);
     if (chatRoom != null) {
       final updatedUnreadCount = Map<String, int>.from(chatRoom.unreadCount);
       updatedUnreadCount[userId] = 0;

@@ -1,5 +1,8 @@
 import 'dart:io';
 import 'package:flutter/material.dart';
+import 'package:meow/models/chat_room_model.dart';
+import 'package:meow/screens/chat/chat_detail_screen.dart';
+import 'package:meow/services/chat_service.dart';
 import 'package:provider/provider.dart';
 import 'package:image_picker/image_picker.dart';
 import '../../models/cat_model.dart';
@@ -9,9 +12,12 @@ import '../../services/firestore_service.dart';
 import '../../services/storage_service.dart';
 import '../../screens/cat/edit_cat_screen.dart';
 import '../../screens/cat/cat_details_screen.dart';
+import 'followers_screen.dart';
 
 class ProfileScreen extends StatefulWidget {
-  const ProfileScreen({super.key});
+  final String? userId; // null means current user's profile
+
+  const ProfileScreen({super.key, this.userId});
 
   @override
   State<ProfileScreen> createState() => _ProfileScreenState();
@@ -33,53 +39,30 @@ class _ProfileScreenState extends State<ProfileScreen> {
     super.dispose();
   }
 
-  Future<void> _updateProfile(UserModel user) async {
-    if (!_formKey.currentState!.validate()) return;
-
-    setState(() => _isLoading = true);
-
-    try {
-      final updatedUser = user.copyWith(
-        location: _locationController.text.trim(),
-        bio: _bioController.text.trim(),
-      );
-
-      await context.read<FirestoreService>().saveUser(updatedUser);
-      setState(() => _isEditing = false);
-    } finally {
-      setState(() => _isLoading = false);
-    }
-  }
-
-  Future<void> _updateProfilePhoto(UserModel user) async {
-    final ImagePicker picker = ImagePicker();
-    final XFile? image = await picker.pickImage(source: ImageSource.gallery);
-
-    if (image == null) return;
-
-    setState(() => _isLoading = true);
-
-    try {
-      final storageService = context.read<StorageService>();
-      final firestoreService = context.read<FirestoreService>();
-
-      // Upload new photo
-      final photoUrl = await storageService.uploadUserProfilePhoto(
-        File(image.path),
-        user.id,
-      );
-
-      // Delete old photo if exists
-      if (user.photoUrl != null) {
-        await storageService.deleteFile(user.photoUrl!);
-      }
-
-      // Update user profile
-      final updatedUser = user.copyWith(photoUrl: photoUrl);
-      await firestoreService.saveUser(updatedUser);
-    } finally {
-      setState(() => _isLoading = false);
-    }
+  Widget _buildFollowCount(BuildContext context, String label, int count, UserModel user, int initialTab) {
+    return GestureDetector(
+      child: Column(
+        children: [
+          Text(
+            count.toString(),
+            style: Theme.of(context).textTheme.titleLarge,
+          ),
+          Text(
+            label,
+            style: Theme.of(context).textTheme.bodyMedium,
+          ),
+        ],
+      ),
+      onTap: () => Navigator.push(
+        context,
+        MaterialPageRoute(
+          builder: (context) => FollowersScreen(
+            user: user,
+            initialTab: initialTab,
+          ),
+        ),
+      ),
+    );
   }
 
   void _navigateToAddCat(BuildContext context) {
@@ -107,10 +90,13 @@ class _ProfileScreenState extends State<ProfileScreen> {
       return const Center(child: Text('Please sign in to view profile'));
     }
 
+    final firestoreService = context.read<FirestoreService>();
+    final storageService = context.read<StorageService>();
+    final userId = widget.userId ?? currentUser.uid;
+    final isProfileOfCurrentUser = currentUser.uid == userId;
+
     return StreamBuilder<UserModel?>(
-      stream: context
-          .read<FirestoreService>()
-          .getUserStream(currentUser.uid), // TODO: Add this method to FirestoreService
+      stream: firestoreService.getUserStream(userId),
       builder: (context, userSnapshot) {
         if (userSnapshot.connectionState == ConnectionState.waiting) {
           return const Center(child: CircularProgressIndicator());
@@ -137,34 +123,83 @@ class _ProfileScreenState extends State<ProfileScreen> {
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
               // Profile header
-              Center(
-                child: Stack(
-                  children: [
-                    CircleAvatar(
-                      radius: 60,
-                      backgroundImage: user.photoUrl != null
-                          ? NetworkImage(user.photoUrl!)
-                          : null,
-                      child: user.photoUrl == null
-                          ? Text(
-                              user.name[0].toUpperCase(),
-                              style: const TextStyle(fontSize: 40),
-                            )
-                          : null,
-                    ),
-                    Positioned(
-                      bottom: 0,
-                      right: 0,
-                      child: CircleAvatar(
-                        backgroundColor: Theme.of(context).primaryColor,
-                        child: IconButton(
-                          icon: const Icon(Icons.camera_alt, color: Colors.white),
-                          onPressed: () => _updateProfilePhoto(user),
+              Row(
+                children: [
+                  // Profile Picture Section
+                  Stack(
+                    children: [
+                      CircleAvatar(
+                        radius: 60,
+                        backgroundImage: user.photoUrl != null
+                            ? NetworkImage(user.photoUrl!)
+                            : null,
+                        child: user.photoUrl == null
+                            ? Text(
+                                user.name[0].toUpperCase(),
+                                style: const TextStyle(fontSize: 40),
+                              )
+                            : null,
+                      ),
+                      if (isProfileOfCurrentUser)
+                        Positioned(
+                          bottom: 0,
+                          right: 0,
+                          child: CircleAvatar(
+                            backgroundColor: Theme.of(context).primaryColor,
+                            child: IconButton(
+                              icon: const Icon(Icons.camera_alt, color: Colors.white),
+                              onPressed: () async {
+                                final pickedFile = await ImagePicker().pickImage(source: ImageSource.gallery);
+                                if (pickedFile == null) return;
+
+                                setState(() => _isLoading = true);
+                                try {
+                                  // Upload new photo
+                                  final photoUrl = await storageService.uploadUserProfilePhoto(File(pickedFile.path), user.id);
+
+                                  // Delete old photo if exists
+                                  if (user.photoUrl != null) {
+                                    await storageService.deleteFile(user.photoUrl!);
+                                  }
+
+                                  // Update user profile
+                                  await firestoreService.saveUser(user.copyWith(photoUrl: photoUrl));
+                                } finally {
+                                  setState(() => _isLoading = false);
+                                }
+                              },
+                            ),
+                          ),
                         ),
+                    ],
+                  ),
+                  
+                  // Followers and Following Counts Section
+                  Expanded(
+                    child: Padding(
+                      padding: const EdgeInsets.symmetric(horizontal: 16),
+                      child: Row(
+                        mainAxisAlignment: MainAxisAlignment.spaceEvenly,
+                        children: [
+                          StreamBuilder<List<UserModel>>(
+                            stream: firestoreService.getFollowers(user.id),
+                            builder: (context, snapshot) {
+                              final followers = snapshot.data ?? [];
+                              return _buildFollowCount(context, 'Followers', followers.length, user, 0);
+                            },
+                          ),
+                          StreamBuilder<List<UserModel>>(
+                            stream: firestoreService.getFollowing(user.id),
+                            builder: (context, snapshot) {
+                              final following = snapshot.data ?? [];
+                              return _buildFollowCount(context, 'Following', following.length, user, 1);
+                            },
+                          ),
+                        ],
                       ),
                     ),
-                  ],
-                ),
+                  )
+                ],
               ),
               const SizedBox(height: 24),
 
@@ -177,10 +212,6 @@ class _ProfileScreenState extends State<ProfileScreen> {
                       ListTile(
                         leading: const Icon(Icons.person),
                         title: Text(user.name),
-                      ),
-                      ListTile(
-                        leading: const Icon(Icons.email),
-                        title: Text(user.email),
                       ),
                       const SizedBox(height: 16),
                       TextFormField(
@@ -210,7 +241,22 @@ class _ProfileScreenState extends State<ProfileScreen> {
                           ElevatedButton(
                             onPressed: _isLoading
                                 ? null
-                                : () => _updateProfile(user),
+                                : () async {
+                                    if (!_formKey.currentState!.validate()) return;
+
+                                    setState(() => _isLoading = true);
+
+                                    try {
+                                      final updatedUser = user.copyWith(
+                                        location: _locationController.text.trim(),
+                                        bio: _bioController.text.trim(),
+                                      );
+
+                                      await firestoreService.saveUser(updatedUser);
+                                    } finally {
+                                      setState(() => _isLoading = false);
+                                    }
+                                  },
                             child: _isLoading
                                 ? const CircularProgressIndicator()
                                 : const Text('Save'),
@@ -230,10 +276,6 @@ class _ProfileScreenState extends State<ProfileScreen> {
                         style: Theme.of(context).textTheme.titleLarge,
                       ),
                     ),
-                    ListTile(
-                      leading: const Icon(Icons.email),
-                      title: Text(user.email),
-                    ),
                     if (user.location != null)
                       ListTile(
                         leading: const Icon(Icons.location_on),
@@ -244,40 +286,96 @@ class _ProfileScreenState extends State<ProfileScreen> {
                         leading: const Icon(Icons.info),
                         title: Text(user.bio!),
                       ),
-                    Center(
-                      child: TextButton.icon(
-                        icon: const Icon(Icons.edit),
-                        label: const Text('Edit Profile'),
-                        onPressed: () => setState(() => _isEditing = true),
+                    if (isProfileOfCurrentUser)
+                      Center(
+                        child: TextButton.icon(
+                          icon: const Icon(Icons.edit),
+                          label: const Text('Edit Profile'),
+                          onPressed: () => setState(() => _isEditing = true),
+                        ),
                       ),
-                    ),
                   ],
                 ),
 
-              const Divider(height: 32),
+                // Follow button
+                if (!isProfileOfCurrentUser)
+                  StreamBuilder<bool>(
+                    stream: firestoreService.isFollowing(user.id, currentUser.uid),
+                    builder: (context, snapshot) {
+                      final isFollowing = snapshot.data ?? false;
+                      return Row(
+                        mainAxisAlignment: MainAxisAlignment.center,
+                        children: [
+                          ElevatedButton(
+                            style: ElevatedButton.styleFrom(
+                              backgroundColor: isFollowing ? Colors.grey[200] : null,
+                              foregroundColor: isFollowing ? Colors.black : null,
+                            ),
+                            child: Text(isFollowing ? 'Unfollow' : 'Follow'),
+                            onPressed: () {
+                              if (isFollowing) {
+                                firestoreService.unfollowUser(user.id, currentUser.uid);
+                              } else {
+                                firestoreService.followUser(user.id, currentUser.uid);
+                              }
+                            },
+                          ),
+                          const SizedBox(width: 8),
+                          ElevatedButton.icon(
+                            icon: const Icon(Icons.chat),
+                            label: const Text('Message'),
+                            onPressed: () => Navigator.push(
+                              context,
+                              MaterialPageRoute(
+                                builder: (context) => FutureBuilder<ChatRoomModel?>(
+                                  future: context.read<ChatService>().getChatRoom(participantIds: [currentUser.uid, user.id]),
+                                  builder: (context, snapshot) {
+                                    if (snapshot.connectionState == ConnectionState.waiting) {
+                                      return CircularProgressIndicator();
+                                    } else if (snapshot.hasError) {
+                                      return Text('Error: ${snapshot.error}');
+                                    } else if (!snapshot.hasData || snapshot.data == null) {
+                                      return Text('No chat room found.');
+                                    } else {
+                                      return ChatDetailScreen(
+                                        chatRoom: snapshot.data!,
+                                        otherUser: user,
+                                      );
+                                    }
+                                  },
+                                ),
+                              ),
+                            ),
+                          ),
+                        ],
+                      );
+                    },
+                  ),
+                
+                const SizedBox(height: 24),
 
+              // TODO: add 2 or 3 pages here: Cats, Posts(images), Posts(text)
               // Cats section
               Row(
                 mainAxisAlignment: MainAxisAlignment.spaceBetween,
                 children: [
                   Text(
-                    'My Cats',
+                    'Cats',
                     style: Theme.of(context).textTheme.titleLarge,
                   ),
-                  TextButton.icon(
-                    icon: const Icon(Icons.add),
-                    label: const Text('Add Cat'),
-                    onPressed: () => _navigateToAddCat(context),
-                  ),
+                  if (isProfileOfCurrentUser)
+                    TextButton.icon(
+                      icon: const Icon(Icons.add),
+                      label: const Text('Add Cat'),
+                      onPressed: () => _navigateToAddCat(context),
+                    ),
                 ],
               ),
               const SizedBox(height: 16),
 
               // Cats grid
               StreamBuilder<List<CatModel>>(
-                stream: context
-                    .read<FirestoreService>()
-                    .getUserCats(user.id),
+                stream: firestoreService.getUserCats(user.id),
                 builder: (context, catsSnapshot) {
                   if (catsSnapshot.connectionState == ConnectionState.waiting) {
                     return const Center(child: CircularProgressIndicator());

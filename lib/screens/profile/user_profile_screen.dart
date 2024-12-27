@@ -8,6 +8,7 @@ import '../../services/firestore_service.dart';
 import '../../services/chat_service.dart';
 import '../chat/chat_detail_screen.dart';
 import '../cat/cat_details_screen.dart';
+import 'followers_screen.dart';
 
 class UserProfileScreen extends StatelessWidget {
   final UserModel user;
@@ -20,7 +21,7 @@ class UserProfileScreen extends StatelessWidget {
 
     // Check if chat room already exists
     final chatService = context.read<ChatService>();
-    final existingRoom = await chatService.findExistingChatRoom([currentUser.uid, user.id]);
+    final existingRoom = await chatService.getChatRoom(participantIds: [currentUser.uid, user.id]);
 
     if (context.mounted) {
       if (existingRoom != null) {
@@ -35,13 +36,13 @@ class UserProfileScreen extends StatelessWidget {
         );
       } else {
         // Create new chat room
-        final newRoom = await chatService.createChatRoom([currentUser.uid, user.id]);
+        final newRoom = await chatService.getChatRoom(participantIds: [currentUser.uid, user.id]);
         if (context.mounted) {
           Navigator.push(
             context,
             MaterialPageRoute(
               builder: (context) => ChatDetailScreen(
-                chatRoom: newRoom,
+                chatRoom: newRoom!, // Add null assertion operator since newRoom is nullable
                 otherUser: user,
               ),
             ),
@@ -51,10 +52,50 @@ class UserProfileScreen extends StatelessWidget {
     }
   }
 
+  Widget _buildFollowButton(BuildContext context, bool isFollowing) {
+    return ElevatedButton(
+      onPressed: () {
+        final currentUser = context.read<AuthService>().currentUser;
+        if (currentUser == null) return;
+
+        final firestoreService = context.read<FirestoreService>();
+        if (isFollowing) {
+          firestoreService.unfollowUser(user.id, currentUser.uid);
+        } else {
+          firestoreService.followUser(user.id, currentUser.uid);
+        }
+      },
+      style: ElevatedButton.styleFrom(
+        backgroundColor: isFollowing ? Colors.grey[200] : null,
+        foregroundColor: isFollowing ? Colors.black : null,
+      ),
+      child: Text(isFollowing ? 'Unfollow' : 'Follow'),
+    );
+  }
+
+  Widget _buildFollowCount(BuildContext context, String label, int count, VoidCallback onTap) {
+    return GestureDetector(
+      onTap: onTap,
+      child: Column(
+        children: [
+          Text(
+            count.toString(),
+            style: Theme.of(context).textTheme.titleLarge,
+          ),
+          Text(
+            label,
+            style: Theme.of(context).textTheme.bodyMedium,
+          ),
+        ],
+      ),
+    );
+  }
+
   @override
   Widget build(BuildContext context) {
     final currentUser = context.read<AuthService>().currentUser;
     final isCurrentUser = currentUser?.uid == user.id;
+    final firestoreService = context.read<FirestoreService>();
 
     return Scaffold(
       appBar: AppBar(
@@ -108,6 +149,66 @@ class UserProfileScreen extends StatelessWidget {
                       style: Theme.of(context).textTheme.bodyMedium,
                     ),
                   ],
+                  const SizedBox(height: 16),
+                  
+                  // Follow button
+                  if (!isCurrentUser && currentUser != null)
+                    StreamBuilder<bool>(
+                      stream: firestoreService.isFollowing(user.id, currentUser.uid),
+                      builder: (context, snapshot) {
+                        final isFollowing = snapshot.data ?? false;
+                        return _buildFollowButton(context, isFollowing);
+                      },
+                    ),
+                  
+                  const SizedBox(height: 24),
+                  
+                  // Followers and following counts
+                  Row(
+                    mainAxisAlignment: MainAxisAlignment.spaceEvenly,
+                    children: [
+                      StreamBuilder<List<UserModel>>(
+                        stream: firestoreService.getFollowers(user.id),
+                        builder: (context, snapshot) {
+                          final followers = snapshot.data ?? [];
+                          return _buildFollowCount(
+                            context,
+                            'Followers',
+                            followers.length,
+                            () => Navigator.push(
+                              context,
+                              MaterialPageRoute(
+                                builder: (context) => FollowersScreen(
+                                  user: user,
+                                  initialTab: 0,
+                                ),
+                              ),
+                            ),
+                          );
+                        },
+                      ),
+                      StreamBuilder<List<UserModel>>(
+                        stream: firestoreService.getFollowing(user.id),
+                        builder: (context, snapshot) {
+                          final following = snapshot.data ?? [];
+                          return _buildFollowCount(
+                            context,
+                            'Following',
+                            following.length,
+                            () => Navigator.push(
+                              context,
+                              MaterialPageRoute(
+                                builder: (context) => FollowersScreen(
+                                  user: user,
+                                  initialTab: 1,
+                                ),
+                              ),
+                            ),
+                          );
+                        },
+                      ),
+                    ],
+                  ),
                 ],
               ),
             ),
@@ -122,7 +223,7 @@ class UserProfileScreen extends StatelessWidget {
 
             // Cats grid
             StreamBuilder<List<CatModel>>(
-              stream: context.read<FirestoreService>().getUserCats(user.id),
+              stream: firestoreService.getUserCats(user.id),
               builder: (context, snapshot) {
                 if (snapshot.connectionState == ConnectionState.waiting) {
                   return const Center(child: CircularProgressIndicator());
