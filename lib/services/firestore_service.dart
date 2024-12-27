@@ -190,21 +190,39 @@ class FirestoreService {
   }
 
   // Comments
-  Future<void> addComment(CommentModel comment) async { //todo eddie when saving smth to db, it generates a unique id for the document. i need to save that id in the comment model, and for other db interations too.
+  Future<void> addComment(CommentModel comment) async {
+    // Add the comment
     final doc = await _db.collection('comments').add(comment.toMap());
     
-    // Get the post and commenter info
-    final post = await getPost(comment.postId);
-    final commenter = await getUser(comment.userId);
+    // Update the comment with the generated ID
+    final updatedComment = CommentModel(
+      id: doc.id,
+      postId: comment.postId,
+      userId: comment.userId,
+      text: comment.text,
+      createdAt: comment.createdAt,
+    );
+    await doc.update(updatedComment.toMap());
     
-    if (post != null && commenter != null && post.userId != comment.userId) {
-      await _notificationService.sendCommentNotification(
-        userId: post.userId,
-        postId: comment.postId,
-        commentId: comment.id,
-        commenter: commenter,
-        commentText: comment.text,
-      );
+    // Get and update the post
+    final post = await getPost(comment.postId);
+    if (post != null) {
+      post.addComment(doc.id, comment.text);
+      await savePost(post);
+      
+      // Send notification if the commenter is not the post author
+      if (post.userId != comment.userId) {
+        final commenter = await getUser(comment.userId);
+        if (commenter != null) {
+          await _notificationService.sendCommentNotification(
+            userId: post.userId,
+            postId: comment.postId,
+            commentId: doc.id,
+            commenter: commenter,
+            commentText: comment.text,
+          );
+        }
+      }
     }
   }
 
@@ -221,6 +239,38 @@ class FirestoreService {
 
   Future<void> deleteComment(String commentId) async {
     await _db.collection('comments').doc(commentId).delete();
+  }
+
+  Future<void> likeComment(String commentId, String userId) async {
+    final doc = await _db.collection('comments').doc(commentId).get();
+    if (!doc.exists) return;
+
+    final comment = CommentModel.fromMap(doc.data()!);
+    comment.addLike(userId);
+    await _db.collection('comments').doc(commentId).update(comment.toMap());
+
+    // Send notification if the comment is not by the liker
+    if (comment.userId != userId) {
+      final liker = await getUser(userId);
+      final post = await getPost(comment.postId);
+      if (liker != null && post != null) {
+        await _notificationService.sendCommentLikeNotification(
+          userId: comment.userId,
+          postId: comment.postId,
+          commentId: commentId,
+          liker: liker,
+        );
+      }
+    }
+  }
+
+  Future<void> unlikeComment(String commentId, String userId) async {
+    final doc = await _db.collection('comments').doc(commentId).get();
+    if (!doc.exists) return;
+
+    final comment = CommentModel.fromMap(doc.data()!);
+    comment.removeLike(userId);
+    await _db.collection('comments').doc(commentId).update(comment.toMap());
   }
 
   // Following/Followers

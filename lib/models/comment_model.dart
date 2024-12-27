@@ -6,6 +6,7 @@ class CommentModel {
   final String userId;
   final String text;
   final DateTime createdAt;
+  List<String> likes;
 
   CommentModel({
     required this.id,
@@ -13,7 +14,8 @@ class CommentModel {
     required this.userId,
     required this.text,
     required this.createdAt,
-  });
+    List<String>? likes,
+  }) : likes = likes ?? [];
 
   factory CommentModel.fromMap(Map<String, dynamic> map) {
     return CommentModel(
@@ -22,6 +24,7 @@ class CommentModel {
       userId: map['userId'] as String,
       text: map['text'] as String,
       createdAt: (map['createdAt'] as Timestamp).toDate(),
+      likes: List<String>.from(map['likes'] ?? []),
     );
   }
 
@@ -32,6 +35,7 @@ class CommentModel {
       'userId': userId,
       'text': text,
       'createdAt': Timestamp.fromDate(createdAt),
+      'likes': likes,
     };
   }
 
@@ -41,6 +45,7 @@ class CommentModel {
     String? userId,
     String? text,
     DateTime? createdAt,
+    List<String>? likes,
   }) {
     return CommentModel(
       id: id ?? this.id,
@@ -48,6 +53,17 @@ class CommentModel {
       userId: userId ?? this.userId,
       text: text ?? this.text,
       createdAt: createdAt ?? this.createdAt,
+      likes: likes ?? this.likes,
     );
+  }
+
+  void addLike(String userId) {
+    if (!likes.contains(userId)) {
+      likes.add(userId);
+    }
+  }
+
+  void removeLike(String userId) {
+    likes.remove(userId);
   }
 } 

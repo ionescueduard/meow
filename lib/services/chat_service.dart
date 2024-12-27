@@ -44,14 +44,24 @@ class ChatService {
   }
 
   Future<ChatRoomModel?> findExistingChatRoom(List<String> participantIds) async {
-    final querySnapshot = await _db
+    final snapshot = await _db
         .collection('chatRooms')
-        .where('participantIds', isEqualTo: participantIds..sort())
-        .limit(1)
+        .where('participantIds', isEqualTo: participantIds)
         .get();
 
-    if (querySnapshot.docs.isEmpty) return null;
-    return ChatRoomModel.fromMap(querySnapshot.docs.first.data());
+    if (snapshot.docs.isEmpty) {
+      // Try with reversed participant order
+      final reversedSnapshot = await _db
+          .collection('chatRooms')
+          .where('participantIds', isEqualTo: participantIds.reversed.toList())
+          .get();
+
+      return reversedSnapshot.docs.isEmpty
+          ? null
+          : ChatRoomModel.fromMap(reversedSnapshot.docs.first.data());
+    }
+
+    return ChatRoomModel.fromMap(snapshot.docs.first.data());
   }
 
   // Messages

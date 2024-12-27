@@ -4,9 +4,12 @@ import 'package:provider/provider.dart';
 import 'package:timeago/timeago.dart' as timeago;
 import '../models/post_model.dart';
 import '../models/user_model.dart';
+import '../models/cat_model.dart';
 import '../services/firestore_service.dart';
 import '../services/auth_service.dart';
 import '../screens/post/edit_post_screen.dart';
+import '../screens/profile/user_profile_screen.dart';
+import '../screens/cat/cat_details_screen.dart';
 
 class PostCard extends StatelessWidget {
   final PostModel post;
@@ -168,26 +171,47 @@ class PostCard extends StatelessWidget {
     }
   }
 
+  void _navigateToUserProfile(BuildContext context) {
+    Navigator.push(
+      context,
+      MaterialPageRoute(
+        builder: (context) => UserProfileScreen(user: author),
+      ),
+    );
+  }
+
   @override
   Widget build(BuildContext context) {
+    final currentUser = Provider.of<AuthService>(context, listen: false).currentUser;
+    final isAuthor = currentUser?.uid == author.id;
+
     return Card(
-      margin: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+      margin: const EdgeInsets.symmetric(
+        horizontal: 8,
+        vertical: 4,
+      ),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          // Author header
+          // Post header
           ListTile(
-            leading: CircleAvatar(
-              backgroundImage: author.photoUrl != null
-                  ? CachedNetworkImageProvider(author.photoUrl!)
-                  : null,
-              child: author.photoUrl == null
-                  ? Text(author.name[0].toUpperCase())
-                  : null,
+            leading: GestureDetector(
+              onTap: () => _navigateToUserProfile(context),
+              child: CircleAvatar(
+                backgroundImage: author.photoUrl != null
+                    ? NetworkImage(author.photoUrl!)
+                    : null,
+                child: author.photoUrl == null
+                    ? Text(author.name[0].toUpperCase())
+                    : null,
+              ),
             ),
-            title: Text(
-              author.name,
-              style: const TextStyle(fontWeight: FontWeight.bold),
+            title: GestureDetector(
+              onTap: () => _navigateToUserProfile(context),
+              child: Text(
+                author.name,
+                style: const TextStyle(fontWeight: FontWeight.bold),
+              ),
             ),
             subtitle: Text(
               timeago.format(post.createdAt),
@@ -204,6 +228,46 @@ class PostCard extends StatelessWidget {
             Padding(
               padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
               child: Text(post.content),
+            ),
+
+          // Tagged cats
+          if (post.catIds.isNotEmpty)
+            FutureBuilder<List<CatModel>>(
+              future: Future.wait(
+                post.catIds.map((id) => context.read<FirestoreService>().getCat(id)).whereType<Future<CatModel?>>(),
+              ).then((cats) => cats.whereType<CatModel>().toList()),
+              builder: (context, snapshot) {
+                if (!snapshot.hasData) return const SizedBox.shrink();
+                final cats = snapshot.data!;
+                return Wrap(
+                  spacing: 8,
+                  children: cats.map((cat) => GestureDetector(
+                    onTap: () {
+                      Navigator.push(
+                        context,
+                        MaterialPageRoute(
+                          builder: (context) => CatDetailsScreen(cat: cat),
+                        ),
+                      );
+                    },
+                    child: Chip(
+                      avatar: cat.photoUrls.isNotEmpty
+                          ? CircleAvatar(
+                              backgroundImage: NetworkImage(cat.photoUrls.first),
+                            )
+                          : const CircleAvatar(
+                              child: Icon(Icons.pets, size: 16),
+                            ),
+                      label: Text(cat.name),
+                      deleteIcon: isAuthor ? const Icon(Icons.close, size: 16) : null,
+                      onDeleted: isAuthor ? () {
+                        post.catIds.remove(cat.id);
+                        context.read<FirestoreService>().savePost(post);
+                      } : null,
+                    ),
+                  )).toList(),
+                );
+              },
             ),
 
           // Post media
@@ -259,30 +323,15 @@ class PostCard extends StatelessWidget {
           // Comments preview
           if (post.comments.isNotEmpty)
             Padding(
-              padding: const EdgeInsets.all(16),
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  Text(
-                    'Comments',
-                    style: Theme.of(context).textTheme.titleSmall,
+              padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
+              child: GestureDetector(
+                onTap: onComment,
+                child: Text(
+                  'View all ${post.comments.length} comments',
+                  style: Theme.of(context).textTheme.bodySmall?.copyWith(
+                    color: Theme.of(context).textTheme.bodyMedium?.color,
                   ),
-                  const SizedBox(height: 8),
-                  ...post.comments.entries.take(2).map(
-                        (comment) => Padding(
-                          padding: const EdgeInsets.only(bottom: 4),
-                          child: Text(comment.value),
-                        ),
-                      ),
-                  if (post.comments.length > 2)
-                    TextButton(
-                      onPressed: onComment,
-                      child: Text(
-                        'View all ${post.comments.length} comments',
-                        style: Theme.of(context).textTheme.bodySmall,
-                      ),
-                    ),
-                ],
+                ),
               ),
             ),
         ],

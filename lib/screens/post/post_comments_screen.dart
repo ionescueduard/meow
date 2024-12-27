@@ -105,46 +105,147 @@ class _PostCommentsScreenState extends State<PostCommentsScreen> {
                         }
 
                         final commentAuthor = userSnapshot.data!;
-                        return Card(
-                          margin: const EdgeInsets.only(bottom: 8),
-                          child: Padding(
-                            padding: const EdgeInsets.all(12),
-                            child: Column(
-                              crossAxisAlignment: CrossAxisAlignment.start,
-                              children: [
-                                Row(
-                                  children: [
-                                    CircleAvatar(
-                                      backgroundImage: commentAuthor.photoUrl != null
-                                          ? NetworkImage(commentAuthor.photoUrl!)
-                                          : null,
-                                      child: commentAuthor.photoUrl == null
-                                          ? Text(commentAuthor.name[0])
-                                          : null,
-                                    ),
-                                    const SizedBox(width: 8),
-                                    Expanded(
-                                      child: Column(
-                                        crossAxisAlignment: CrossAxisAlignment.start,
-                                        children: [
-                                          Text(
-                                            commentAuthor.name,
-                                            style: const TextStyle(
-                                              fontWeight: FontWeight.bold,
+                        return GestureDetector(
+                          onLongPress: () {
+                            final currentUser = context.read<AuthService>().currentUser;
+                            if (currentUser == null) return;
+                            
+                            // Only show delete option if user is comment author or post owner
+                            if (comment.userId == currentUser.uid ||
+                                widget.post.userId == currentUser.uid) {
+                              showModalBottomSheet(
+                                context: context,
+                                builder: (context) => SafeArea(
+                                  child: Column(
+                                    mainAxisSize: MainAxisSize.min,
+                                    children: [
+                                      ListTile(
+                                        leading: const Icon(Icons.delete_outline),
+                                        title: const Text('Delete Comment'),
+                                        onTap: () async {
+                                          Navigator.pop(context);
+                                          final confirm = await showDialog<bool>(
+                                            context: context,
+                                            builder: (context) => AlertDialog(
+                                              title: const Text('Delete Comment'),
+                                              content: const Text('Are you sure you want to delete this comment?'),
+                                              actions: [
+                                                TextButton(
+                                                  onPressed: () => Navigator.pop(context, false),
+                                                  child: const Text('Cancel'),
+                                                ),
+                                                TextButton(
+                                                  onPressed: () => Navigator.pop(context, true),
+                                                  child: const Text('Delete'),
+                                                ),
+                                              ],
                                             ),
-                                          ),
-                                          Text(
-                                            timeago.format(comment.createdAt),
-                                            style: Theme.of(context).textTheme.bodySmall,
+                                          );
+
+                                          if (confirm == true) {
+                                            await firestoreService.deleteComment(comment.id);
+                                          }
+                                        },
+                                      ),
+                                    ],
+                                  ),
+                                ),
+                              );
+                            }
+                          },
+                          child: Card(
+                            margin: const EdgeInsets.only(bottom: 8),
+                            child: Padding(
+                              padding: const EdgeInsets.all(12),
+                              child: Column(
+                                crossAxisAlignment: CrossAxisAlignment.start,
+                                children: [
+                                  Row(
+                                    children: [
+                                      CircleAvatar(
+                                        radius: 16,
+                                        backgroundImage: commentAuthor.photoUrl != null
+                                            ? NetworkImage(commentAuthor.photoUrl!)
+                                            : null,
+                                        child: commentAuthor.photoUrl == null
+                                            ? Text(commentAuthor.name[0])
+                                            : null,
+                                      ),
+                                      const SizedBox(width: 8),
+                                      Expanded(
+                                        child: Row(
+                                          children: [
+                                            Text(
+                                              commentAuthor.name,
+                                              style: const TextStyle(
+                                                fontWeight: FontWeight.bold,
+                                              ),
+                                            ),
+                                            const SizedBox(width: 8),
+                                            Text(
+                                              timeago.format(comment.createdAt,
+                                                  locale: 'en_short'),
+                                              style: Theme.of(context).textTheme.bodySmall,
+                                            ),
+                                          ],
+                                        ),
+                                      ),
+                                      Row(
+                                        children: [
+                                          if (comment.likes.isNotEmpty)
+                                            Padding(
+                                              padding: const EdgeInsets.only(right: 4),
+                                              child: Text(
+                                                comment.likes.length.toString(),
+                                                style: Theme.of(context).textTheme.bodySmall,
+                                              ),
+                                            ),
+                                          IconButton(
+                                            icon: Icon(
+                                              comment.likes.contains(context.read<AuthService>().currentUser?.uid)
+                                                  ? Icons.favorite
+                                                  : Icons.favorite_border,
+                                              size: 16,
+                                              color: comment.likes.contains(context.read<AuthService>().currentUser?.uid)
+                                                  ? Colors.red
+                                                  : null,
+                                            ),
+                                            constraints: const BoxConstraints(),
+                                            padding: EdgeInsets.zero,
+                                            onPressed: () {
+                                              final currentUser = context.read<AuthService>().currentUser;
+                                              if (currentUser == null) {
+                                                ScaffoldMessenger.of(context).showSnackBar(
+                                                  const SnackBar(
+                                                    content: Text('Please sign in to like comments'),
+                                                  ),
+                                                );
+                                                return;
+                                              }
+                                              
+                                              if (comment.likes.contains(currentUser.uid)) {
+                                                firestoreService.unlikeComment(
+                                                  comment.id,
+                                                  currentUser.uid,
+                                                );
+                                              } else {
+                                                firestoreService.likeComment(
+                                                  comment.id,
+                                                  currentUser.uid,
+                                                );
+                                              }
+                                            },
                                           ),
                                         ],
                                       ),
-                                    ),
-                                  ],
-                                ),
-                                const SizedBox(height: 8),
-                                Text(comment.text),
-                              ],
+                                    ],
+                                  ),
+                                  Padding(
+                                    padding: const EdgeInsets.only(left: 40),
+                                    child: Text(comment.text),
+                                  ),
+                                ],
+                              ),
                             ),
                           ),
                         );

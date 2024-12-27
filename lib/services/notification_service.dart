@@ -206,18 +206,34 @@ class NotificationService {
     required String postId,
     required UserModel liker,
   }) async {
-    final data = {
-      'type': NotificationType.like.toString(),
-      'postId': postId,
-      'likerId': liker.id,
-      'likerName': liker.name,
-    };
-
     await _sendNotification(
       topic: 'user_$userId',
-      title: 'New Like',
-      body: '${liker.name} liked your post',
-      data: data,
+      title: '${liker.name} liked your post',
+      body: 'Tap to view the post',
+      data: {
+        'type': 'like',
+        'postId': postId,
+        'likerId': liker.id,
+      },
+    );
+  }
+
+  Future<void> sendCommentLikeNotification({
+    required String userId,
+    required String postId,
+    required String commentId,
+    required UserModel liker,
+  }) async {
+    await _sendNotification(
+      topic: 'user_$userId',
+      title: '${liker.name} liked your comment',
+      body: 'Tap to view the comment',
+      data: {
+        'type': 'comment_like',
+        'postId': postId,
+        'commentId': commentId,
+        'likerId': liker.id,
+      },
     );
   }
 
