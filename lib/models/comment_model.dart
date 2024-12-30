@@ -7,6 +7,8 @@ class CommentModel {
   final String text;
   final DateTime createdAt;
   List<String> likes;
+  final String? parentId; // ID of the parent comment if this is a reply
+  final int replyCount;
 
   CommentModel({
     required this.id,
@@ -15,16 +17,29 @@ class CommentModel {
     required this.text,
     required this.createdAt,
     List<String>? likes,
+    this.parentId,
+    this.replyCount = 0,
   }) : likes = likes ?? [];
 
-  factory CommentModel.fromMap(Map<String, dynamic> map) {
+  CommentModel copyWith({
+    String? id,
+    String? postId,
+    String? userId,
+    String? text,
+    DateTime? createdAt,
+    List<String>? likes,
+    String? parentId,
+    int? replyCount,
+  }) {
     return CommentModel(
-      id: map['id'] as String,
-      postId: map['postId'] as String,
-      userId: map['userId'] as String,
-      text: map['text'] as String,
-      createdAt: (map['createdAt'] as Timestamp).toDate(),
-      likes: List<String>.from(map['likes'] ?? []),
+      id: id ?? this.id,
+      postId: postId ?? this.postId,
+      userId: userId ?? this.userId,
+      text: text ?? this.text,
+      createdAt: createdAt ?? this.createdAt,
+      likes: likes ?? this.likes,
+      parentId: parentId ?? this.parentId,
+      replyCount: replyCount ?? this.replyCount,
     );
   }
 
@@ -34,36 +49,33 @@ class CommentModel {
       'postId': postId,
       'userId': userId,
       'text': text,
-      'createdAt': Timestamp.fromDate(createdAt),
+      'createdAt': createdAt.toUtc().millisecondsSinceEpoch,
       'likes': likes,
+      'parentId': parentId,
+      'replyCount': replyCount,
     };
   }
 
-  CommentModel copyWith({
-    String? id,
-    String? postId,
-    String? userId,
-    String? text,
-    DateTime? createdAt,
-    List<String>? likes,
-  }) {
+  factory CommentModel.fromMap(Map<String, dynamic> map) {
     return CommentModel(
-      id: id ?? this.id,
-      postId: postId ?? this.postId,
-      userId: userId ?? this.userId,
-      text: text ?? this.text,
-      createdAt: createdAt ?? this.createdAt,
-      likes: likes ?? this.likes,
+      id: map['id'] as String,
+      postId: map['postId'] as String,
+      userId: map['userId'] as String,
+      text: map['text'] as String,
+      createdAt: DateTime.fromMillisecondsSinceEpoch(map['createdAt'] as int).toLocal(),
+      likes: List<String>.from(map['likes'] ?? []),
+      parentId: map['parentId'] as String?,
+      replyCount: map['replyCount'] as int? ?? 0,
     );
   }
 
-  void addLike(String userId) {
-    if (!likes.contains(userId)) {
-      likes.add(userId);
-    }
+  void removeLike(String userId) {
+    likes!.remove(userId);
   }
 
-  void removeLike(String userId) {
-    likes.remove(userId);
+  void addLike(String userId) {
+    if (!likes!.contains(userId)) {
+      likes!.add(userId);
+    }
   }
 } 

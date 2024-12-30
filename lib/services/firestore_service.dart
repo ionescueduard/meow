@@ -5,10 +5,12 @@ import '../models/post_model.dart';
 import '../models/comment_model.dart';
 import '../models/breeding_request_model.dart';
 import 'notification_service.dart';
+import 'package:firebase_auth/firebase_auth.dart';
 //import 'package:geolocator/geolocator.dart';
 
 class FirestoreService {
   final FirebaseFirestore _db = FirebaseFirestore.instance;
+  final FirebaseAuth _auth = FirebaseAuth.instance;
   final NotificationService _notificationService;
 
   FirestoreService(this._notificationService);
@@ -217,38 +219,58 @@ class FirestoreService {
   }
 
   // Comments
-  Future<void> addComment(CommentModel comment) async {
-    // Add the comment
-    final doc = await _db.collection('comments').add(comment.toMap());
-    
-    // Update the comment with the generated ID
-    final updatedComment = CommentModel(
-      id: doc.id,
-      postId: comment.postId,
-      userId: comment.userId,
-      text: comment.text,
-      createdAt: comment.createdAt,
+  Future<void> addComment(String postId, String text, {String? parentId}) async {
+    final user = _auth.currentUser;
+    if (user == null) return;
+
+    final batch = _db.batch();
+    final commentRef = _db.collection('comments').doc();
+    final comment = CommentModel(
+      id: commentRef.id,
+      postId: postId,
+      userId: user.uid,
+      text: text,
+      createdAt: DateTime.now(),
+      parentId: parentId,
     );
-    await doc.update(updatedComment.toMap());
-    
-    // Get and update the post
-    final post = await getPost(comment.postId);
-    if (post != null) {
-      post.addComment(doc.id, comment.text);
-      await savePost(post);
-      
-      // Send notification if the commenter is not the post author
-      if (post.userId != comment.userId) {
-        final commenter = await getUser(comment.userId);
-        if (commenter != null) {
-          await _notificationService.sendCommentNotification(
-            userId: post.userId,
-            postId: comment.postId,
-            commentId: doc.id,
-            commenter: commenter,
-            commentText: comment.text,
-          );
-        }
+
+    // Add the new comment
+    batch.set(commentRef, comment.toMap());
+
+    // Update post's comment count using FieldValue
+    final postRef = _db.collection('posts').doc(postId);
+    batch.update(postRef, {
+      'commentsCount': FieldValue.increment(1),
+    });
+
+    // If this is a reply, update parent comment's reply count
+    if (parentId != null) {
+      final parentCommentRef = _db.collection('comments').doc(parentId);
+      final parentDoc = await parentCommentRef.get();
+      if (parentDoc.exists) {
+        final parentComment = CommentModel.fromMap(parentDoc.data()!);
+        final updatedParentComment = parentComment.copyWith(
+          replyCount: parentComment.replyCount + 1,
+        );
+        batch.set(parentCommentRef, updatedParentComment.toMap());
+      }
+    }
+
+    // Commit all changes
+    await batch.commit();
+
+    // Send notification
+    final post = await getPost(postId);
+    if (post != null && post.userId != user.uid) {
+      final commenter = await getUser(user.uid);
+      if (commenter != null) {
+        await _notificationService.sendCommentNotification(
+          userId: post.userId,
+          postId: postId,
+          commentId: commentRef.id,
+          commenter: commenter,
+          commentText: text,
+        );
       }
     }
   }
@@ -257,47 +279,62 @@ class FirestoreService {
     return _db
         .collection('comments')
         .where('postId', isEqualTo: postId)
+        .where('parentId', isNull: true) // Only get top-level comments
         .orderBy('createdAt', descending: true)
         .snapshots()
         .map((snapshot) => snapshot.docs
-            .map((doc) => CommentModel.fromMap(doc.data()))
+            .map((doc) => CommentModel.fromMap(doc.data() as Map<String, dynamic>))
             .toList());
+  }
+
+  Stream<List<CommentModel>> getCommentReplies(String commentId) {
+    print('Fetching replies for comment: $commentId'); // Debug print
+    return _db
+        .collection('comments')
+        .where('parentId', isEqualTo: commentId)
+        .orderBy('createdAt', descending: true)
+        .snapshots()
+        .map((snapshot) {
+          print('Found ${snapshot.docs.length} replies'); // Debug print
+          return snapshot.docs
+              .map((doc) => CommentModel.fromMap(doc.data()))
+              .toList();
+        });
   }
 
   Future<void> deleteComment(String commentId) async {
     await _db.collection('comments').doc(commentId).delete();
   }
 
-  Future<void> likeComment(String commentId, String userId) async {
-    final doc = await _db.collection('comments').doc(commentId).get();
+  Future<void> likeComment(String commentId, bool like) async {
+    final user = _auth.currentUser;
+    if (user == null) return;
+
+    final commentRef = _db.collection('comments').doc(commentId);
+    final doc = await commentRef.get();
     if (!doc.exists) return;
 
     final comment = CommentModel.fromMap(doc.data()!);
-    comment.addLike(userId);
-    await _db.collection('comments').doc(commentId).update(comment.toMap());
+    if (like) {
+      comment.addLike(user.uid);
+    } else {
+      comment.removeLike(user.uid);
+    }
+    await commentRef.update({'likes': comment.likes});
 
-    // Send notification if the comment is not by the liker
-    if (comment.userId != userId) {
-      final liker = await getUser(userId);
-      final post = await getPost(comment.postId);
-      if (liker != null && post != null) {
-        await _notificationService.sendCommentLikeNotification(
-          userId: comment.userId,
-          postId: comment.postId,
-          commentId: commentId,
-          liker: liker,
-        );
+    if (like) {
+      if (comment.userId != user.uid) {
+        final liker = await getUser(user.uid);
+        if (liker != null) {
+          await _notificationService.sendCommentLikeNotification(
+            userId: comment.userId,
+            postId: comment.postId,
+            commentId: commentId,
+            liker: liker,
+          );
+        }
       }
     }
-  }
-
-  Future<void> unlikeComment(String commentId, String userId) async {
-    final doc = await _db.collection('comments').doc(commentId).get();
-    if (!doc.exists) return;
-
-    final comment = CommentModel.fromMap(doc.data()!);
-    comment.removeLike(userId);
-    await _db.collection('comments').doc(commentId).update(comment.toMap());
   }
 
   // Following/Followers
@@ -546,5 +583,11 @@ class FirestoreService {
     if (!userDoc.exists) return [];
     final userData = userDoc.data()!;
     return List<String>.from(userData['catIds'] ?? []);
+  }
+
+  Future<CommentModel?> getComment(String commentId) async {
+    final doc = await _db.collection('comments').doc(commentId).get();
+    if (!doc.exists) return null;
+    return CommentModel.fromMap(doc.data()! as Map<String, dynamic>);
   }
 } 
