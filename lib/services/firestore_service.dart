@@ -3,6 +3,7 @@ import '../models/user_model.dart';
 import '../models/cat_model.dart';
 import '../models/post_model.dart';
 import '../models/comment_model.dart';
+import '../models/breeding_request_model.dart';
 import 'notification_service.dart';
 //import 'package:geolocator/geolocator.dart';
 
@@ -97,21 +98,25 @@ class FirestoreService {
     CatBreed? breed,
     CatGender? gender,
     BreedingStatus? breedingStatus,
+    double? minAge,
+    double? maxAge,
     Map<String, dynamic>? location,
   }) {
     Query query = _db.collection('cats');
 
     if (breed != null) {
-      query = query.where('breed', isEqualTo: breed.toString().split('.').last);
-    }
-    if (gender != null) {
-      query = query.where('gender', isEqualTo: gender.toString().split('.').last);
-    }
-    if (breedingStatus != null) {
-      query = query.where('breedingStatus', isEqualTo: breedingStatus.toString().split('.').last);
+      query = query.where('breed', isEqualTo: breed.toString());
     }
 
-      if (location != null) {
+    if (gender != null) {
+      query = query.where('gender', isEqualTo: gender.toString());
+    }
+
+    if (breedingStatus != null) {
+      query = query.where('breedingStatus', isEqualTo: breedingStatus.toString());
+    }
+
+    if (location != null) {
       print('Searching by location not yet implemented');
 
     //import 'package:geolocator/geolocator.dart';
@@ -145,9 +150,22 @@ class FirestoreService {
     // });
     }
 
-    return query.snapshots().map((snapshot) => snapshot.docs
-        .map((doc) => CatModel.fromMap(doc.data() as Map<String, dynamic>))
-        .toList());
+    return query.snapshots().map((snapshot) {
+      final cats = snapshot.docs
+          .map((doc) => CatModel.fromMap(doc.data() as Map<String, dynamic>))
+          .toList();
+
+      if (minAge != null || maxAge != null) {
+        final now = DateTime.now();
+        return cats.where((cat) {
+          final ageInYears = (now.difference(cat.birthDate).inDays / 365);
+          return (minAge == null || ageInYears >= minAge) &&
+              (maxAge == null || ageInYears <= maxAge);
+        }).toList();
+      }
+
+      return cats;
+    });
   }
 
   // Posts
@@ -456,53 +474,23 @@ class FirestoreService {
 
     await batch.commit();
 
-    // Get cat and requester info for notification
+    // Get the cat owner's ID to send notification
     final cat = await getCat(catId);
-    final requester = await getUser(requesterId);
-    
-    if (cat != null && requester != null) {
-      await _notificationService.sendBreedingRequestNotification(
-        userId: cat.ownerId,
-        catId: catId,
-        requester: requester,
-      );
-    }
-  }
-
-  Stream<List<Map<String, dynamic>>> getBreedingRequests(String userId) {
-    return _db
-        .collection('breedingRequests')
-        .where('status', isEqualTo: 'pending')
-        .snapshots()
-        .asyncMap((snapshot) async {
-      final requests = <Map<String, dynamic>>[];
-      
-      for (final doc in snapshot.docs) {
-        final data = doc.data();
-        final cat = await getCat(data['catId']);
-        final requester = await getUser(data['requesterId']);
-        final requesterCat = await getCat(data['requesterCatId']);
-        
-        if (cat != null && requester != null && requesterCat != null) {
-          if (cat.ownerId == userId || data['requesterId'] == userId) {
-            requests.add({
-              ...data,
-              'cat': cat,
-              'requester': requester,
-              'requesterCat': requesterCat,
-            });
-          }
-        }
+    if (cat != null) {
+      final requester = await getUser(requesterId);
+      if (requester != null) {
+        await _notificationService.sendBreedingRequestNotification(
+          userId: cat.ownerId,
+          catId: catId,
+          requester: requester,
+        );
       }
-      
-      return requests;
-    });
+    }
   }
 
   Future<void> updateBreedingRequestStatus(String requestId, String status) async {
     await _db.collection('breedingRequests').doc(requestId).update({
       'status': status,
-      'updatedAt': FieldValue.serverTimestamp(),
     });
   }
 
@@ -522,5 +510,41 @@ class FirestoreService {
     };
 
     await _db.collection('reports').doc(reportId).set(report);
+  }
+
+  // Breeding Requests
+  Stream<List<BreedingRequest>> getReceivedBreedingRequests(String userId) async* {
+    final catIds = await _getCatIds(userId);
+    if (catIds.isEmpty) {
+      yield [];
+      return;
+    }
+
+    yield* _db
+        .collection('breedingRequests')
+        .where('catId', whereIn: catIds)
+        .orderBy('createdAt', descending: true)
+        .snapshots()
+        .map((snapshot) => snapshot.docs
+            .map((doc) => BreedingRequest.fromMap(doc.data(), doc.id))
+            .toList());
+  }
+
+  Stream<List<BreedingRequest>> getSentBreedingRequests(String userId) {
+    return _db
+        .collection('breedingRequests')
+        .where('requesterId', isEqualTo: userId)
+        .orderBy('createdAt', descending: true)
+        .snapshots()
+        .map((snapshot) => snapshot.docs
+            .map((doc) => BreedingRequest.fromMap(doc.data(), doc.id))
+            .toList());
+  }
+
+  Future<List<String>> _getCatIds(String userId) async {
+    final userDoc = await _db.collection('users').doc(userId).get();
+    if (!userDoc.exists) return [];
+    final userData = userDoc.data()!;
+    return List<String>.from(userData['catIds'] ?? []);
   }
 } 
