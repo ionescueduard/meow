@@ -119,8 +119,15 @@ class _ProfileScreenState extends State<ProfileScreen> {
 
         return Scaffold(
           appBar: AppBar(
-            title: Text(user.name),
-          ), 
+            title: Text('@${user.username}'),
+            actions: [
+              if (isProfileOfCurrentUser)
+                IconButton(
+                  icon: const Icon(Icons.settings),
+                  onPressed: () => Navigator.pushNamed(context, '/settings'),
+                ),
+            ],
+          ),
           body: SingleChildScrollView(
             padding: const EdgeInsets.all(16),
             child: Column(

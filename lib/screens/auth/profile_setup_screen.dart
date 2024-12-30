@@ -16,13 +16,53 @@ class ProfileSetupScreen extends StatefulWidget {
 class _ProfileSetupScreenState extends State<ProfileSetupScreen> {
   final _formKey = GlobalKey<FormState>();
   final _nameController = TextEditingController();
+  final _usernameController = TextEditingController();
   final _bioController = TextEditingController();
   final _locationController = TextEditingController();
 
   bool _isLoading = false;
+  bool _isCheckingUsername = false;
+  String? _usernameError;
+
+  Future<bool> _isUsernameAvailable(String username) async {
+    final firestoreService = context.read<FirestoreService>();
+    return await firestoreService.isUsernameAvailable(username);
+  }
+
+  Future<void> _validateUsername(String value) async {
+    if (value.isEmpty) {
+      setState(() => _usernameError = 'Please enter a username');
+      return;
+    }
+
+    if (value.length < 3) {
+      setState(() => _usernameError = 'Username must be at least 3 characters');
+      return;
+    }
+
+    if (!RegExp(r'^[a-zA-Z0-9_]+$').hasMatch(value)) {
+      setState(() => _usernameError = 'Username can only contain letters, numbers, and underscores');
+      return;
+    }
+
+    setState(() {
+      _isCheckingUsername = true;
+      _usernameError = null;
+    });
+
+    final isAvailable = await _isUsernameAvailable(value);
+
+    setState(() {
+      _isCheckingUsername = false;
+      if (!isAvailable) {
+        _usernameError = 'Username is already taken';
+      }
+    });
+  }
 
   Future<void> _saveProfile() async {
     if (!_formKey.currentState!.validate()) return;
+    if (_usernameError != null) return;
 
     setState(() => _isLoading = true);
 
@@ -35,6 +75,7 @@ class _ProfileSetupScreenState extends State<ProfileSetupScreen> {
         final userModel = UserModel(
           id: user.uid,
           email: user.email!,
+          username: _usernameController.text.trim(),
           name: _nameController.text.trim(),
           bio: _bioController.text.trim(),
           location: _locationController.text.trim(),
@@ -93,6 +134,32 @@ class _ProfileSetupScreenState extends State<ProfileSetupScreen> {
               ),
               const SizedBox(height: 16),
               TextFormField(
+                controller: _usernameController,
+                decoration: InputDecoration(
+                  labelText: 'Username *',
+                  border: const OutlineInputBorder(),
+                  errorText: _usernameError,
+                  suffixIcon: _isCheckingUsername
+                      ? const SizedBox(
+                          width: 20,
+                          height: 20,
+                          child: Padding(
+                            padding: EdgeInsets.all(12.0),
+                            child: CircularProgressIndicator(strokeWidth: 2),
+                          ),
+                        )
+                      : null,
+                ),
+                onChanged: _validateUsername,
+                validator: (value) {
+                  if (value == null || value.trim().isEmpty) {
+                    return 'Please enter a username';
+                  }
+                  return null;
+                },
+              ),
+              const SizedBox(height: 16),
+              TextFormField(
                 controller: _locationController,
                 decoration: const InputDecoration(
                   labelText: 'Location',
@@ -129,6 +196,7 @@ class _ProfileSetupScreenState extends State<ProfileSetupScreen> {
   @override
   void dispose() {
     _nameController.dispose();
+    _usernameController.dispose();
     _bioController.dispose();
     _locationController.dispose();
     super.dispose();

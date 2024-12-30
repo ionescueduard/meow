@@ -13,7 +13,10 @@ import 'config/theme.dart';
 import 'screens/auth/login_screen.dart';
 import 'screens/auth/profile_setup_screen.dart';
 import 'screens/home/home_screen.dart';
+import 'screens/settings/settings_screen.dart';
 import 'firebase_options.dart';
+import 'package:shared_preferences/shared_preferences.dart';
+import 'providers/theme_provider.dart';
 
 void main() async {
   WidgetsFlutterBinding.ensureInitialized();
@@ -26,9 +29,12 @@ void main() async {
     await Firebase.initializeApp();
   }
 
+  final prefs = await SharedPreferences.getInstance();
+  
   runApp(
     MultiProvider(
       providers: [
+        ChangeNotifierProvider(create: (_) => ThemeProvider(prefs)),
         Provider<StorageService>(create: (_) => StorageService()),
         Provider<NotificationService>(create: (context) => NotificationService()),
         Provider<FirestoreService>(create: (context) => FirestoreService(context.read<NotificationService>())),
@@ -45,15 +51,29 @@ class MeowApp extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return MaterialApp(
-      title: 'Meow - Cat Breeding App',
-      theme: AppTheme.lightTheme,
-      darkTheme: AppTheme.darkTheme,
-      initialRoute: '/',
-      routes: {
-        '/': (context) => _buildAuthWrapper(context),
-        '/profile-setup': (context) => const ProfileSetupScreen(),
-        '/home': (context) => const HomeScreen(),
+    return Consumer<ThemeProvider>(
+      builder: (context, themeProvider, child) {
+        return MaterialApp(
+          title: 'Meow - Cat Breeding App',
+          theme: ThemeData(
+            colorScheme: ColorScheme.fromSeed(seedColor: Colors.deepPurple),
+            useMaterial3: true,
+          ),
+          darkTheme: ThemeData.dark(useMaterial3: true).copyWith(
+            colorScheme: ColorScheme.fromSeed(
+              seedColor: Colors.deepPurple,
+              brightness: Brightness.dark,
+            ),
+          ),
+          themeMode: themeProvider.themeMode,
+          initialRoute: '/',
+          routes: {
+            '/': (context) => _buildAuthWrapper(context),
+            '/profile-setup': (context) => const ProfileSetupScreen(),
+            '/home': (context) => const HomeScreen(),
+            '/settings': (context) => const SettingsScreen(),
+          },
+        );
       },
     );
   }

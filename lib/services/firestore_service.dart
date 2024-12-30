@@ -17,6 +17,15 @@ class FirestoreService {
     await _db.collection('users').doc(user.id).set(user.toMap());
   }
 
+  Future<bool> isUsernameAvailable(String username) async {
+    final snapshot = await _db
+        .collection('users')
+        .where('username', isEqualTo: username)
+        .limit(1)
+        .get();
+    return snapshot.docs.isEmpty;
+  }
+
   Future<UserModel?> getUser(String userId) async {
     final doc = await _db.collection('users').doc(userId).get();
     return doc.exists ? UserModel.fromMap(doc.data()!) : null;
