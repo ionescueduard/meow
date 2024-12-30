@@ -33,6 +33,7 @@ dependencies:
   video_player: ^2.9.2
   chewie: ^1.8.5
   geolocator: ^13.0.2
+  http: ^1.2.2
 
 dev_dependencies:
   flutter_test:

@@ -71,7 +71,7 @@ class _EditCatScreenState extends State<EditCatScreen> {
 
       final storageService = context.read<StorageService>();
       final photoUrl = await storageService.uploadCatImage(
-        File(image.path),
+        image,
         _catId,
       );
 

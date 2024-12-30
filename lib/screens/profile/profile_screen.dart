@@ -159,7 +159,7 @@ class _ProfileScreenState extends State<ProfileScreen> {
                                   setState(() => _isLoading = true);
                                   try {
                                     // Upload new photo
-                                    final photoUrl = await storageService.uploadUserProfilePhoto(File(pickedFile.path), user.id);
+                                    final photoUrl = await storageService.uploadUserProfilePhoto(pickedFile, user.id);
 
                                     // Delete old photo if exists
                                     if (user.photoUrl != null) {
