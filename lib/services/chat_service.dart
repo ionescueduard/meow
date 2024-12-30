@@ -202,4 +202,26 @@ class ChatService {
       referencedCatId: catId,
     );
   }
+
+  Future<void> deleteChatRoom(String roomId) async {
+    // Delete all messages in the chat room
+    final messagesSnapshot = await _db
+        .collection('chatRooms')
+        .doc(roomId)
+        .collection('messages')
+        .get();
+
+    final batch = _db.batch();
+
+    // Delete all messages
+    for (final doc in messagesSnapshot.docs) {
+      batch.delete(doc.reference);
+    }
+
+    // Delete the chat room document
+    batch.delete(_db.collection('chatRooms').doc(roomId));
+
+    // Commit the batch
+    await batch.commit();
+  }
 } 
