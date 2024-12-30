@@ -7,6 +7,8 @@ import '../../services/firestore_service.dart';
 import '../../widgets/post_card.dart';
 import '../post/edit_post_screen.dart';
 import '../post/post_comments_screen.dart';
+import '../../models/notification_model.dart';
+import '../../services/notification_service.dart';
 
 class FeedScreen extends StatelessWidget {
   const FeedScreen({super.key});
@@ -20,6 +22,46 @@ class FeedScreen extends StatelessWidget {
       appBar: AppBar(
         title: const Text('Feed'),
         actions: [
+          if (currentUser?.uid != null)
+            StreamBuilder<List<NotificationModel>>(
+              stream: context.read<NotificationService>().getNotifications(currentUser!.uid),
+              builder: (context, snapshot) {
+                final unreadCount = snapshot.data?.where((n) => !n.isRead).length ?? 0;
+                
+                return Stack(
+                  children: [
+                    IconButton(
+                      icon: const Icon(Icons.notifications),
+                      onPressed: () => Navigator.pushNamed(context, '/notifications'),
+                    ),
+                    if (unreadCount > 0)
+                      Positioned(
+                        right: 8,
+                        top: 8,
+                        child: Container(
+                          padding: const EdgeInsets.all(2),
+                          decoration: BoxDecoration(
+                            color: Theme.of(context).colorScheme.error,
+                            borderRadius: BorderRadius.circular(10),
+                          ),
+                          constraints: const BoxConstraints(
+                            minWidth: 16,
+                            minHeight: 16,
+                          ),
+                          child: Text(
+                            unreadCount.toString(),
+                            style: const TextStyle(
+                              color: Colors.white,
+                              fontSize: 10,
+                            ),
+                            textAlign: TextAlign.center,
+                          ),
+                        ),
+                      ),
+                  ],
+                );
+              },
+            ),
           IconButton(
             icon: const Icon(Icons.add),
             onPressed: () {

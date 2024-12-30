@@ -14,6 +14,7 @@ import 'screens/auth/login_screen.dart';
 import 'screens/auth/profile_setup_screen.dart';
 import 'screens/home/home_screen.dart';
 import 'screens/settings/settings_screen.dart';
+import 'screens/notifications/notifications_screen.dart';
 import 'firebase_options.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 import 'providers/theme_provider.dart';
@@ -72,6 +73,7 @@ class MeowApp extends StatelessWidget {
             '/profile-setup': (context) => const ProfileSetupScreen(),
             '/home': (context) => const HomeScreen(),
             '/settings': (context) => const SettingsScreen(),
+            '/notifications': (context) => const NotificationsScreen(),
           },
         );
       },
