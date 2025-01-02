@@ -119,7 +119,7 @@ class _ProfileScreenState extends State<ProfileScreen> {
 
         return Scaffold(
           appBar: AppBar(
-            title: Text('@${user.username}'),
+            title: Text(user.username),
             actions: [
               if (isProfileOfCurrentUser)
                 IconButton(

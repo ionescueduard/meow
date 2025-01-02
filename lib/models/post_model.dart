@@ -9,7 +9,7 @@ class PostModel {
   List<String> likes;
   DateTime createdAt;
   DateTime updatedAt;
-  Map<String, String> comments; // key: commentId, value: comment content
+  int commentsCount;
 
   PostModel({
     required this.id,
@@ -20,13 +20,13 @@ class PostModel {
     List<String>? likes,
     DateTime? createdAt,
     DateTime? updatedAt,
-    Map<String, String>? comments,
+    int? commentsCount,
   }) : imageUrls = imageUrls ?? [],
        catIds = catIds ?? [],
        likes = likes ?? [],
        createdAt = createdAt ?? DateTime.now(),
        updatedAt = updatedAt ?? DateTime.now(),
-       comments = comments ?? {};
+       commentsCount = commentsCount ?? 0;
 
   factory PostModel.fromMap(Map<String, dynamic> map) {
     return PostModel(
@@ -38,7 +38,7 @@ class PostModel {
       likes: List<String>.from(map['likes'] as List),
       createdAt: (map['createdAt'] as Timestamp).toDate(),
       updatedAt: (map['updatedAt'] as Timestamp).toDate(),
-      comments: Map<String, String>.from(map['comments'] ?? {}),
+      commentsCount: map['commentsCount'] as int? ?? 0,
     );
   }
 
@@ -52,7 +52,7 @@ class PostModel {
       'likes': likes,
       'createdAt': Timestamp.fromDate(createdAt),
       'updatedAt': Timestamp.fromDate(updatedAt),
-      'comments': comments,
+      'commentsCount': commentsCount,
     };
   }
 
@@ -65,7 +65,7 @@ class PostModel {
     List<String>? likes,
     DateTime? createdAt,
     DateTime? updatedAt,
-    Map<String, String>? comments,
+    int? commentsCount,
   }) {
     return PostModel(
       id: id ?? this.id,
@@ -76,7 +76,7 @@ class PostModel {
       likes: likes ?? this.likes,
       createdAt: createdAt ?? this.createdAt,
       updatedAt: updatedAt ?? this.updatedAt,
-      comments: comments ?? this.comments,
+      commentsCount: commentsCount ?? this.commentsCount,
     );
   }
 
@@ -89,17 +89,6 @@ class PostModel {
 
   void removeLike(String userId) {
     if (likes.remove(userId)) {
-      updatedAt = DateTime.now();
-    }
-  }
-
-  void addComment(String commentId, String content) {
-    comments[commentId] = content;
-    updatedAt = DateTime.now();
-  }
-
-  void removeComment(String commentId) {
-    if (comments.remove(commentId) != null) {
       updatedAt = DateTime.now();
     }
   }

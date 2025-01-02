@@ -209,7 +209,7 @@ class PostCard extends StatelessWidget {
             title: GestureDetector(
               onTap: () => _navigateToUserProfile(context),
               child: Text(
-                author.name,
+                author.username,
                 style: const TextStyle(fontWeight: FontWeight.bold),
               ),
             ),
@@ -310,7 +310,7 @@ class PostCard extends StatelessWidget {
                 onPressed: onComment,
               ),
               Text(
-                post.comments.length.toString(),
+                post.commentsCount.toString(),
                 style: Theme.of(context).textTheme.bodySmall,
               ),
               IconButton(
@@ -321,13 +321,13 @@ class PostCard extends StatelessWidget {
           ),
 
           // Comments preview
-          if (post.comments.isNotEmpty)
+          if (post.commentsCount > 0)
             Padding(
               padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
               child: GestureDetector(
                 onTap: onComment,
                 child: Text(
-                  'View all ${post.comments.length} comments',
+                  'View all ${post.commentsCount} comments',
                   style: Theme.of(context).textTheme.bodySmall?.copyWith(
                     color: Theme.of(context).textTheme.bodyMedium?.color,
                   ),

@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:flutter/gestures.dart';
 import 'package:provider/provider.dart';
 import '../../models/post_model.dart';
 import '../../models/user_model.dart';
@@ -7,6 +8,7 @@ import '../../services/auth_service.dart';
 import '../../services/firestore_service.dart';
 import 'package:timeago/timeago.dart' as timeago;
 import '../profile/profile_screen.dart';
+import 'package:cloud_firestore/cloud_firestore.dart';
 
 class PostCommentsScreen extends StatefulWidget {
   final PostModel post;
@@ -26,6 +28,7 @@ class _PostCommentsScreenState extends State<PostCommentsScreen> {
   final TextEditingController _commentController = TextEditingController();
   String? _replyingToId;
   String? _replyingToUsername;
+  final _db = FirebaseFirestore.instance;
 
   @override
   void dispose() {
@@ -80,7 +83,7 @@ class _PostCommentsScreenState extends State<PostCommentsScreen> {
                       ? NetworkImage(commenter.photoUrl!)
                       : null,
                   child: commenter.photoUrl == null
-                      ? Text(commenter.name[0].toUpperCase())
+                      ? Text(commenter.username[0].toUpperCase())
                       : null,
                 ),
               ),
@@ -147,10 +150,7 @@ class _PostCommentsScreenState extends State<PostCommentsScreen> {
                     children: [
                       Row(
                         children: [
-                          Text(
-                            commenter.name,
-                            style: const TextStyle(fontWeight: FontWeight.bold),
-                          ),
+                          Text(commenter.username),
                           const SizedBox(width: 8),
                           Text(
                             timeago.format(comment.createdAt, locale: 'en_short'),
@@ -159,7 +159,44 @@ class _PostCommentsScreenState extends State<PostCommentsScreen> {
                         ],
                       ),
                       const SizedBox(height: 4),
-                      Text(comment.text),
+                      if (comment.text.startsWith('@'))
+                        RichText(
+                          text: TextSpan(
+                            children: [
+                              TextSpan(
+                                text: comment.text.substring(0, comment.text.indexOf(' ')),
+                                style: TextStyle(
+                                  color: Theme.of(context).colorScheme.primary,
+                                  fontWeight: FontWeight.bold,
+                                ),
+                                recognizer: TapGestureRecognizer()
+                                  ..onTap = () async {
+                                    final username = comment.text.substring(1, comment.text.indexOf(' '));
+                                    // Get all users and find the one with matching username
+                                    final userDocs = await _db.collection('users')
+                                        .where('username', isEqualTo: username)
+                                        .limit(1)
+                                        .get();
+                                    
+                                    if (userDocs.docs.isNotEmpty && context.mounted) {
+                                      final user = UserModel.fromMap(userDocs.docs.first.data());
+                                      Navigator.push(
+                                        context,
+                                        MaterialPageRoute(
+                                          builder: (context) => ProfileScreen(userId: user.id),
+                                        ),
+                                      );
+                                    }
+                                  },
+                              ),
+                              TextSpan(
+                                text: comment.text.substring(comment.text.indexOf(' ')),
+                              ),
+                            ],
+                          ),
+                        )
+                      else
+                        Text(comment.text),
                       const SizedBox(height: 4),
                       Row(
                         children: [
@@ -190,7 +227,7 @@ class _PostCommentsScreenState extends State<PostCommentsScreen> {
                               padding: EdgeInsets.zero,
                               minimumSize: const Size(0, 0),
                             ),
-                            onPressed: () => _startReply(comment.id, commenter.name),
+                            onPressed: () => _startReply(comment.id, commenter.username),
                             child: const Text('Reply'),
                           ),
                         ],
