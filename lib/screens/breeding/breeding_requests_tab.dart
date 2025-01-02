@@ -132,9 +132,19 @@ class _RequestsListState extends State<_RequestsList> with AutomaticKeepAliveCli
 
   Widget _buildRequestCard(BuildContext context, BreedingRequest request) {
     final firestoreService = context.read<FirestoreService>();
+    final isUnseen = widget.isReceived && !request.seen;
 
     return Card(
       margin: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
+      shape: RoundedRectangleBorder(
+        borderRadius: BorderRadius.circular(12),
+        side: isUnseen 
+          ? BorderSide(
+              color: Theme.of(context).colorScheme.primary,
+              width: 1,
+            )
+          : BorderSide.none,
+      ),
       child: InkWell(
         onTap: () {
           Navigator.push(

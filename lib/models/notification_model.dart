@@ -5,6 +5,7 @@ enum NotificationType {
   like,
   comment,
   message,
+  breeding,
 }
 
 class NotificationModel {

@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
+import 'package:badges/badges.dart' as badges;
 import '../../models/post_model.dart';
 import '../../models/user_model.dart';
 import '../../services/auth_service.dart';
@@ -31,38 +32,29 @@ class FeedScreen extends StatelessWidget {
                 return Stack(
                   children: [
                     IconButton(
-                      icon: const Icon(Icons.notifications),
-                      onPressed: () => Navigator.pushNamed(context, '/notifications'),
-                    ),
-                    if (unreadCount > 0)
-                      Positioned(
-                        right: 8,
-                        top: 8,
-                        child: Container(
-                          padding: const EdgeInsets.all(2),
-                          decoration: BoxDecoration(
-                            color: Theme.of(context).colorScheme.error,
-                            borderRadius: BorderRadius.circular(10),
-                          ),
-                          constraints: const BoxConstraints(
-                            minWidth: 16,
-                            minHeight: 16,
-                          ),
-                          child: Text(
-                            unreadCount.toString(),
-                            style: const TextStyle(
-                              color: Colors.white,
-                              fontSize: 10,
-                            ),
-                            textAlign: TextAlign.center,
+                      iconSize: 28,
+                      icon: badges.Badge(
+                        showBadge: unreadCount > 0,
+                        badgeContent: Text(
+                          unreadCount.toString(),
+                          style: const TextStyle(
+                            color: Colors.white,
+                            fontSize: 10,
                           ),
                         ),
+                        badgeStyle: const badges.BadgeStyle(
+                          padding: EdgeInsets.all(4),
+                        ),
+                        child: const Icon(Icons.notifications),
                       ),
+                      onPressed: () => Navigator.pushNamed(context, '/notifications'),
+                    ),
                   ],
                 );
               },
             ),
           IconButton(
+            iconSize: 28,
             icon: const Icon(Icons.add),
             onPressed: () {
               Navigator.push(

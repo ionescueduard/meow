@@ -55,6 +55,7 @@ class MeowApp extends StatelessWidget {
     return Consumer<ThemeProvider>(
       builder: (context, themeProvider, child) {
         return MaterialApp(
+          debugShowCheckedModeBanner: false,
           title: 'Meow - Cat Breeding App',
           theme: ThemeData(
             colorScheme: ColorScheme.fromSeed(seedColor: Colors.deepPurple),

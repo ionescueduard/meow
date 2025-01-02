@@ -358,7 +358,8 @@ class _ProfileScreenState extends State<ProfileScreen> {
                   ),
 
                 const SizedBox(height: 12),
-                const Divider(height: 1),
+                if (isProfileOfCurrentUser)
+                  const Divider(height: 1),
                 const SizedBox(height: 12),
 
                 // Cats section
@@ -405,10 +406,10 @@ class _ProfileScreenState extends State<ProfileScreen> {
                       shrinkWrap: true,
                       physics: const NeverScrollableScrollPhysics(),
                       gridDelegate: const SliverGridDelegateWithFixedCrossAxisCount(
-                        crossAxisCount: 2,
-                        crossAxisSpacing: 16,
-                        mainAxisSpacing: 16,
-                        childAspectRatio: 0.75,
+                        crossAxisCount: 3,
+                        crossAxisSpacing: 8,
+                        mainAxisSpacing: 8,
+                        childAspectRatio: 0.7,
                       ),
                       itemCount: cats.length,
                       itemBuilder: (context, index) {

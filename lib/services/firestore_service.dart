@@ -491,30 +491,22 @@ class FirestoreService {
     required String requestMessage,
     required String requesterCatId,
   }) async {
-    // Get the cat owner's ID first
     final cat = await getCat(catId);
     if (cat == null) return;
 
-    final batch = _db.batch();
-    final requestId = _db.collection('breedingRequests').doc().id;
-
-    final request = {
-      'id': requestId,
-      'catId': catId,
-      'requesterId': requesterId,
-      'requesterCatId': requesterCatId,
-      'receiverId': cat.ownerId,  // Set receiverId from cat's owner
-      'message': requestMessage,
-      'status': 'pending',
-      'createdAt': FieldValue.serverTimestamp(),
-    };
-
-    batch.set(
-      _db.collection('breedingRequests').doc(requestId),
-      request,
+    final request = BreedingRequest(
+      id: _db.collection('breedingRequests').doc().id,
+      catId: catId,
+      requesterId: requesterId,
+      requesterCatId: requesterCatId,
+      receiverId: cat.ownerId,
+      message: requestMessage,
+      status: 'pending',
+      seen: false,
+      createdAt: DateTime.now(),
     );
 
-    await batch.commit();
+    await createBreedingRequest(request);
 
     // Send notification
     final requester = await getUser(requesterId);
@@ -525,6 +517,15 @@ class FirestoreService {
         requester: requester,
       );
     }
+  }
+
+  Future<void> createBreedingRequest(BreedingRequest request) async {
+    final doc = _db.collection('breedingRequests').doc(request.id);
+    final data = request.copyWith(
+      status: 'pending',
+      seen: false,
+    ).toMap();
+    await doc.set(data);
   }
 
   Future<void> updateBreedingRequestStatus(String requestId, String status) async {
@@ -591,5 +592,24 @@ class FirestoreService {
     final doc = await _db.collection('comments').doc(commentId).get();
     if (!doc.exists) return null;
     return CommentModel.fromMap(doc.data()! as Map<String, dynamic>);
+  }
+
+  // Add this method to track unseen requests
+  Stream<int> getUnseenBreedingRequestsCount(String userId) {
+    return _db
+        .collection('breedingRequests')
+        .where('receiverId', isEqualTo: userId)
+        .where('status', isEqualTo: 'pending')
+        .where('seen', isEqualTo: false)
+        .snapshots()
+        .map((snapshot) => snapshot.docs.length);
+  }
+
+  // Add this method to mark a single request as seen
+  Future<void> markBreedingRequestAsSeen(String requestId) async {
+    await _db
+        .collection('breedingRequests')
+        .doc(requestId)
+        .update({'seen': true});
   }
 } 

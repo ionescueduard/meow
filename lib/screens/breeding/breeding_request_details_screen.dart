@@ -27,6 +27,11 @@ class BreedingRequestDetailsScreen extends StatelessWidget {
     final currentUser = context.read<AuthService>().currentUser;
     if (currentUser == null) return const Scaffold();
 
+    // Mark request as seen if it's received and not seen yet
+    if (isReceived && !request.seen) {
+      firestoreService.markBreedingRequestAsSeen(request.id);
+    }
+
     return Scaffold(
       appBar: AppBar(
         title: const Text('Breeding Request Details'),

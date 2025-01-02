@@ -272,7 +272,7 @@ class NotificationService {
       senderId: requester.id,
       senderPhotoUrl: requester.photoUrl,
       message: '${requester.name} is interested in breeding with your cat',
-      type: NotificationType.message, // Using message type for breeding requests
+      type: NotificationType.breeding,
     );
 
     await _sendPushNotification(
