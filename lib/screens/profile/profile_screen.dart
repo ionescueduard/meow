@@ -140,14 +140,14 @@ class _ProfileScreenState extends State<ProfileScreen> {
                     Stack(
                       children: [
                         CircleAvatar(
-                          radius: 60,
+                          radius: 50,
                           backgroundImage: user.photoUrl != null
                               ? NetworkImage(user.photoUrl!)
                               : null,
                           child: user.photoUrl == null
                               ? Text(
                                   user.name[0].toUpperCase(),
-                                  style: const TextStyle(fontSize: 40),
+                                  style: const TextStyle(fontSize: 35),
                                 )
                               : null,
                         ),
@@ -212,7 +212,7 @@ class _ProfileScreenState extends State<ProfileScreen> {
                     )
                   ],
                 ),
-                const SizedBox(height: 24),
+                const SizedBox(height: 12),
 
                 // Profile info
                 if (_isEditing)
@@ -283,108 +283,94 @@ class _ProfileScreenState extends State<ProfileScreen> {
                   Column(
                     crossAxisAlignment: CrossAxisAlignment.start,
                     children: [
-                      ListTile(
-                        title: Text(
-                          user.name,
-                          style: Theme.of(context).textTheme.titleLarge,
+                      Padding(
+                        padding: const EdgeInsets.only(left: 8),
+                        child: Column(
+                          crossAxisAlignment: CrossAxisAlignment.start,
+                          children: [
+                            Text(
+                              user.name,
+                              style: Theme.of(context).textTheme.titleLarge?.copyWith(
+                                fontSize: 20,
+                              ),
+                            ),
+                            if (user.location != null) ...[
+                              const SizedBox(height: 4),
+                              Text(user.location!),
+                            ],
+                            if (user.bio != null && user.bio!.isNotEmpty) ...[
+                              const SizedBox(height: 4),
+                              Text(user.bio!),
+                            ],
+                          ],
                         ),
                       ),
-                      if (user.location != null)
-                        ListTile(
-                          leading: const Icon(Icons.location_on),
-                          title: Text(user.location!),
-                        ),
-                      if (user.bio != null)
-                        ListTile(
-                          leading: const Icon(Icons.info),
-                          title: Text(user.bio!),
-                        ),
-                      if (isProfileOfCurrentUser)
-                        Center(
-                          child: TextButton.icon(
-                            icon: const Icon(Icons.edit),
-                            label: const Text('Edit Profile'),
-                            onPressed: () => setState(() => _isEditing = true),
-                          ),
-                        ),
-                    ],
-                  ),
-
-                  // Follow button
-                  if (!isProfileOfCurrentUser)
-                    StreamBuilder<bool>(
-                      stream: firestoreService.isFollowing(user.id, currentUser.uid),
-                      builder: (context, snapshot) {
-                        final isFollowing = snapshot.data ?? false;
-                        return Row(
-                          mainAxisAlignment: MainAxisAlignment.center,
+                      
+                      if (!isProfileOfCurrentUser) ...[
+                        const SizedBox(height: 16),
+                        Row(
                           children: [
-                            ElevatedButton(
-                              style: ElevatedButton.styleFrom(
-                                backgroundColor: isFollowing ? Colors.grey[200] : null,
-                                foregroundColor: isFollowing ? Colors.black : null,
-                              ),
-                              child: Text(isFollowing ? 'Unfollow' : 'Follow'),
-                              onPressed: () {
-                                if (isFollowing) {
-                                  firestoreService.unfollowUser(user.id, currentUser.uid);
-                                } else {
-                                  firestoreService.followUser(user.id, currentUser.uid);
-                                }
-                              },
-                            ),
-                            const SizedBox(width: 8),
-                            ElevatedButton.icon(
-                              icon: const Icon(Icons.chat),
-                              label: const Text('Message'),
-                              onPressed: () => Navigator.push(
-                                context,
-                                MaterialPageRoute(
-                                  builder: (context) => FutureBuilder<ChatRoomModel?>(
-                                    future: context.read<ChatService>().getChatRoom(participantIds: [currentUser.uid, user.id]),
-                                    builder: (context, snapshot) {
-                                      if (snapshot.connectionState == ConnectionState.waiting) {
-                                        return CircularProgressIndicator();
-                                      } else if (snapshot.hasError) {
-                                        return Text('Error: ${snapshot.error}');
-                                      } else if (!snapshot.hasData || snapshot.data == null) {
-                                        return Text('No chat room found.');
+                            Expanded(
+                              child: StreamBuilder<bool>(
+                                stream: firestoreService.isFollowing(currentUser.uid, user.id),
+                                builder: (context, snapshot) {
+                                  final isFollowing = snapshot.data ?? false;
+                                  return FilledButton(
+                                    onPressed: () {
+                                      if (isFollowing) {
+                                        firestoreService.unfollowUser(currentUser.uid, user.id);
                                       } else {
-                                        return ChatDetailScreen(
-                                          chatRoom: snapshot.data!,
-                                          otherUser: user,
-                                        );
+                                        firestoreService.followUser(currentUser.uid, user.id);
                                       }
                                     },
-                                  ),
-                                ),
+                                    child: Text(isFollowing ? 'Unfollow' : 'Follow'),
+                                  );
+                                },
+                              ),
+                            ),
+                            const SizedBox(width: 8),
+                            Expanded(
+                              child: OutlinedButton(
+                                onPressed: () async {
+                                  final chatRoom = await context.read<ChatService>().getChatRoom(
+                                    participantIds: [currentUser.uid, user.id],
+                                  );
+
+                                  if (chatRoom != null && context.mounted) {
+                                    Navigator.push(
+                                      context,
+                                      MaterialPageRoute(
+                                        builder: (context) => ChatDetailScreen(
+                                          chatRoom: chatRoom,
+                                          otherUser: user,
+                                        ),
+                                      ),
+                                    );
+                                  }
+                                },
+                                child: const Text('Message'),
                               ),
                             ),
                           ],
-                        );
-                      },
-                    ),
-                  
-                  const SizedBox(height: 24),
+                        ),
+                      ]
+                    ],
+                  ),
 
-                // TODO: add 2 or 3 pages here: Cats, Posts(images), Posts(text)
+                const SizedBox(height: 12),
+                const Divider(height: 1),
+                const SizedBox(height: 12),
+
                 // Cats section
-                Row(
-                  mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                  children: [
-                    Text(
-                      'Cats',
-                      style: Theme.of(context).textTheme.titleLarge,
+                if (isProfileOfCurrentUser)
+                  Align(
+                    alignment: Alignment.centerRight,
+                    child: TextButton.icon(
+                      icon: const Icon(Icons.add),
+                      label: const Text('Add Cat'),
+                      onPressed: () => _navigateToAddCat(context),
                     ),
-                    if (isProfileOfCurrentUser)
-                      TextButton.icon(
-                        icon: const Icon(Icons.add),
-                        label: const Text('Add Cat'),
-                        onPressed: () => _navigateToAddCat(context),
-                      ),
-                  ],
-                ),
-                const SizedBox(height: 16),
+                  ),
 
                 // Cats grid
                 StreamBuilder<List<CatModel>>(
@@ -418,12 +404,11 @@ class _ProfileScreenState extends State<ProfileScreen> {
                     return GridView.builder(
                       shrinkWrap: true,
                       physics: const NeverScrollableScrollPhysics(),
-                      gridDelegate:
-                          const SliverGridDelegateWithFixedCrossAxisCount(
+                      gridDelegate: const SliverGridDelegateWithFixedCrossAxisCount(
                         crossAxisCount: 2,
+                        crossAxisSpacing: 16,
+                        mainAxisSpacing: 16,
                         childAspectRatio: 0.75,
-                        crossAxisSpacing: 8,
-                        mainAxisSpacing: 8,
                       ),
                       itemCount: cats.length,
                       itemBuilder: (context, index) {
@@ -433,22 +418,20 @@ class _ProfileScreenState extends State<ProfileScreen> {
                           child: InkWell(
                             onTap: () => _navigateToCatDetails(context, cat),
                             child: Column(
-                              crossAxisAlignment: CrossAxisAlignment.start,
+                              crossAxisAlignment: CrossAxisAlignment.stretch,
                               children: [
                                 Expanded(
                                   child: cat.photoUrls.isNotEmpty
                                       ? Image.network(
                                           cat.photoUrls.first,
                                           fit: BoxFit.cover,
-                                          width: double.infinity,
                                         )
                                       : Container(
-                                          color: Colors.grey[300],
-                                          child: const Center(
-                                            child: Icon(
-                                              Icons.pets,
-                                              size: 64,
-                                            ),
+                                          color: Colors.grey[200],
+                                          child: const Icon(
+                                            Icons.pets,
+                                            size: 50,
+                                            color: Colors.white,
                                           ),
                                         ),
                                 ),
@@ -463,11 +446,7 @@ class _ProfileScreenState extends State<ProfileScreen> {
                                           fontWeight: FontWeight.bold,
                                         ),
                                       ),
-                                      Text(cat.breed.toString().split(".").last),
-                                      Text(
-                                        cat.breedingStatus.toString().split(".").last,
-                                        style: TextStyle(color: cat.breedingStatus == BreedingStatus.available ? Colors.green : Colors.red),
-                                      ),
+                                      Text(cat.breed.toString().split('.').last),
                                     ],
                                   ),
                                 ),

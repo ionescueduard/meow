@@ -8,6 +8,7 @@ import '../../services/auth_service.dart';
 import '../../services/chat_service.dart';
 import '../cat/cat_details_screen.dart';
 import '../chat/chat_detail_screen.dart';
+import '../breeding/breeding_request_details_screen.dart';
 
 class BreedingRequestsTab extends StatefulWidget {
   const BreedingRequestsTab({super.key});
@@ -134,162 +135,175 @@ class _RequestsListState extends State<_RequestsList> with AutomaticKeepAliveCli
 
     return Card(
       margin: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
-      child: Padding(
-        padding: const EdgeInsets.all(16),
-        child: Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            Row(
-              children: [
-                Expanded(
-                  child: FutureBuilder<CatModel?>(
-                    future: firestoreService.getCat(
-                      widget.isReceived ? request.requesterCatId : request.catId,
-                    ),
-                    builder: (context, snapshot) {
-                      if (!snapshot.hasData) {
-                        return const SizedBox.shrink();
-                      }
-                      final cat = snapshot.data!;
-                      return ListTile(
-                        contentPadding: EdgeInsets.zero,
-                        leading: CircleAvatar(
-                          backgroundImage: cat.photoUrls.isNotEmpty
-                              ? NetworkImage(cat.photoUrls.first)
-                              : null,
-                          child: cat.photoUrls.isEmpty
-                              ? const Icon(Icons.pets)
-                              : null,
-                        ),
-                        title: Text(cat.name),
-                        subtitle: Text(cat.breed.toString().split('.').last),
-                        onTap: () {
-                          Navigator.push(
-                            context,
-                            MaterialPageRoute(
-                              builder: (context) => CatDetailsScreen(cat: cat),
-                            ),
-                          );
-                        },
-                      );
-                    },
-                  ),
-                ),
-                const Icon(Icons.arrow_forward),
-                Expanded(
-                  child: FutureBuilder<CatModel?>(
-                    future: firestoreService.getCat(
-                      widget.isReceived ? request.catId : request.requesterCatId,
-                    ),
-                    builder: (context, snapshot) {
-                      if (!snapshot.hasData) {
-                        return const SizedBox.shrink();
-                      }
-                      final cat = snapshot.data!;
-                      return ListTile(
-                        contentPadding: EdgeInsets.zero,
-                        leading: CircleAvatar(
-                          backgroundImage: cat.photoUrls.isNotEmpty
-                              ? NetworkImage(cat.photoUrls.first)
-                              : null,
-                          child: cat.photoUrls.isEmpty
-                              ? const Icon(Icons.pets)
-                              : null,
-                        ),
-                        title: Text(cat.name),
-                        subtitle: Text(cat.breed.toString().split('.').last),
-                        onTap: () {
-                          Navigator.push(
-                            context,
-                            MaterialPageRoute(
-                              builder: (context) => CatDetailsScreen(cat: cat),
-                            ),
-                          );
-                        },
-                      );
-                    },
-                  ),
-                ),
-              ],
-            ),
-            const SizedBox(height: 8),
-            Text(
-              'Message: ${request.message}',
-              style: Theme.of(context).textTheme.bodyMedium,
-            ),
-            const SizedBox(height: 8),
-            Text(
-              'Status: ${request.status}',
-              style: Theme.of(context).textTheme.bodySmall?.copyWith(
-                    color: _getStatusColor(request.status),
-                  ),
-            ),
-            if (widget.isReceived && request.status == 'pending')
-              Row(
-                mainAxisAlignment: MainAxisAlignment.end,
-                children: [
-                  TextButton(
-                    onPressed: () async {
-                      await firestoreService.updateBreedingRequestStatus(
-                        request.id,
-                        'rejected',
-                      );
-                    },
-                    child: const Text('Reject'),
-                  ),
-                  const SizedBox(width: 8),
-                  ElevatedButton(
-                    onPressed: () async {
-                      await firestoreService.updateBreedingRequestStatus(
-                        request.id,
-                        'accepted',
-                      );
-                    },
-                    child: const Text('Accept'),
-                  ),
-                ],
+      child: InkWell(
+        onTap: () {
+          Navigator.push(
+            context,
+            MaterialPageRoute(
+              builder: (context) => BreedingRequestDetailsScreen(
+                request: request,
+                isReceived: widget.isReceived,
               ),
-            if (request.status == 'accepted')
-              FutureBuilder<UserModel?>(
-                future: firestoreService.getUser(
-                  widget.isReceived ? request.requesterId : request.receiverId,
-                ),
-                builder: (context, snapshot) {
-                  if (!snapshot.hasData) return const SizedBox.shrink();
-                  final otherUser = snapshot.data!;
-                  
-                  return Row(
-                    mainAxisAlignment: MainAxisAlignment.end,
-                    children: [
-                      ElevatedButton.icon(
-                        icon: const Icon(Icons.chat),
-                        label: const Text('Start Chat'),
-                        onPressed: () async {
-                          final currentUser = context.read<AuthService>().currentUser;
-                          if (currentUser == null) return;
-
-                          final chatRoom = await context.read<ChatService>().getChatRoom(
-                            participantIds: [currentUser.uid, otherUser.id],
-                          );
-
-                          if (chatRoom != null && context.mounted) {
+            ),
+          );
+        },
+        child: Padding(
+          padding: const EdgeInsets.all(16),
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Row(
+                children: [
+                  Expanded(
+                    child: FutureBuilder<CatModel?>(
+                      future: firestoreService.getCat(
+                        widget.isReceived ? request.requesterCatId : request.catId,
+                      ),
+                      builder: (context, snapshot) {
+                        if (!snapshot.hasData) {
+                          return const SizedBox.shrink();
+                        }
+                        final cat = snapshot.data!;
+                        return ListTile(
+                          contentPadding: EdgeInsets.zero,
+                          leading: CircleAvatar(
+                            backgroundImage: cat.photoUrls.isNotEmpty
+                                ? NetworkImage(cat.photoUrls.first)
+                                : null,
+                            child: cat.photoUrls.isEmpty
+                                ? const Icon(Icons.pets)
+                                : null,
+                          ),
+                          title: Text(cat.name),
+                          subtitle: Text(cat.breed.toString().split('.').last),
+                          onTap: () {
                             Navigator.push(
                               context,
                               MaterialPageRoute(
-                                builder: (context) => ChatDetailScreen(
-                                  chatRoom: chatRoom,
-                                  otherUser: otherUser,
-                                ),
+                                builder: (context) => CatDetailsScreen(cat: cat),
                               ),
                             );
-                          }
-                        },
+                          },
+                        );
+                      },
+                    ),
+                  ),
+                  const Icon(Icons.arrow_forward),
+                  Expanded(
+                    child: FutureBuilder<CatModel?>(
+                      future: firestoreService.getCat(
+                        widget.isReceived ? request.catId : request.requesterCatId,
                       ),
-                    ],
-                  );
-                },
+                      builder: (context, snapshot) {
+                        if (!snapshot.hasData) {
+                          return const SizedBox.shrink();
+                        }
+                        final cat = snapshot.data!;
+                        return ListTile(
+                          contentPadding: EdgeInsets.zero,
+                          leading: CircleAvatar(
+                            backgroundImage: cat.photoUrls.isNotEmpty
+                                ? NetworkImage(cat.photoUrls.first)
+                                : null,
+                            child: cat.photoUrls.isEmpty
+                                ? const Icon(Icons.pets)
+                                : null,
+                          ),
+                          title: Text(cat.name),
+                          subtitle: Text(cat.breed.toString().split('.').last),
+                          onTap: () {
+                            Navigator.push(
+                              context,
+                              MaterialPageRoute(
+                                builder: (context) => CatDetailsScreen(cat: cat),
+                              ),
+                            );
+                          },
+                        );
+                      },
+                    ),
+                  ),
+                ],
               ),
-          ],
+              const SizedBox(height: 8),
+              Text(
+                'Message: ${request.message}',
+                style: Theme.of(context).textTheme.bodyMedium,
+              ),
+              const SizedBox(height: 8),
+              Text(
+                'Status: ${request.status}',
+                style: Theme.of(context).textTheme.bodySmall?.copyWith(
+                      color: _getStatusColor(request.status),
+                    ),
+              ),
+              if (widget.isReceived && request.status == 'pending')
+                Row(
+                  mainAxisAlignment: MainAxisAlignment.end,
+                  children: [
+                    TextButton(
+                      onPressed: () async {
+                        await firestoreService.updateBreedingRequestStatus(
+                          request.id,
+                          'rejected',
+                        );
+                      },
+                      child: const Text('Reject'),
+                    ),
+                    const SizedBox(width: 8),
+                    ElevatedButton(
+                      onPressed: () async {
+                        await firestoreService.updateBreedingRequestStatus(
+                          request.id,
+                          'accepted',
+                        );
+                      },
+                      child: const Text('Accept'),
+                    ),
+                  ],
+                ),
+              if (request.status == 'accepted')
+                FutureBuilder<UserModel?>(
+                  future: firestoreService.getUser(
+                    widget.isReceived ? request.requesterId : request.receiverId,
+                  ),
+                  builder: (context, snapshot) {
+                    if (!snapshot.hasData) return const SizedBox.shrink();
+                    final otherUser = snapshot.data!;
+                    
+                    return Row(
+                      mainAxisAlignment: MainAxisAlignment.end,
+                      children: [
+                        ElevatedButton.icon(
+                          icon: const Icon(Icons.chat),
+                          label: const Text('Start Chat'),
+                          onPressed: () async {
+                            final currentUser = context.read<AuthService>().currentUser;
+                            if (currentUser == null) return;
+
+                            final chatRoom = await context.read<ChatService>().getChatRoom(
+                              participantIds: [currentUser.uid, otherUser.id],
+                            );
+
+                            if (chatRoom != null && context.mounted) {
+                              Navigator.push(
+                                context,
+                                MaterialPageRoute(
+                                  builder: (context) => ChatDetailScreen(
+                                    chatRoom: chatRoom,
+                                    otherUser: otherUser,
+                                  ),
+                                ),
+                              );
+                            }
+                          },
+                        ),
+                      ],
+                    );
+                  },
+                ),
+            ],
+          ),
         ),
       ),
     );

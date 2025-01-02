@@ -5,6 +5,7 @@ import '../../models/user_model.dart';
 import '../../services/firestore_service.dart';
 import '../../services/auth_service.dart';
 import '../../widgets/full_screen_image.dart';
+import '../profile/profile_screen.dart';
 import 'edit_cat_screen.dart';
 
 class CatDetailsScreen extends StatelessWidget {
@@ -37,176 +38,309 @@ class CatDetailsScreen extends StatelessWidget {
         ],
       ),
       body: SingleChildScrollView(
+        padding: const EdgeInsets.all(16),
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
-            SizedBox(
+            // Photos Container
+            Container(
+              decoration: BoxDecoration(
+                color: Theme.of(context).colorScheme.surfaceVariant,
+                borderRadius: BorderRadius.circular(12),
+              ),
               height: 300,
-              child: GestureDetector(
-                onTap: () {
-                  Navigator.push(
-                    context,
-                    MaterialPageRoute(
-                      builder: (context) => cat.photoUrls.isNotEmpty
-                        ? FullScreenImage(
-                            imageUrls: cat.photoUrls,
-                            initialIndex: 0,
-                          )
-                        : Scaffold(
-                            appBar: AppBar(),
-                            body: Container(
-                              color: Colors.grey[300],
-                              child: const Center(
-                                child: Icon(
-                                  Icons.pets,
-                                  size: 120,
-                                  color: Colors.white,
+              width: double.infinity,
+              child: Stack(
+                children: [
+                  ClipRRect(
+                    borderRadius: BorderRadius.circular(12),
+                    child: GestureDetector(
+                      onTap: () {
+                        Navigator.push(
+                          context,
+                          MaterialPageRoute(
+                            builder: (context) => cat.photoUrls.isNotEmpty
+                              ? FullScreenImage(
+                                  imageUrls: cat.photoUrls,
+                                  initialIndex: 0,
+                                )
+                              : Scaffold(
+                                  appBar: AppBar(),
+                                  body: Container(
+                                    color: Colors.grey[300],
+                                    child: const Center(
+                                      child: Icon(
+                                        Icons.pets,
+                                        size: 120,
+                                        color: Colors.white,
+                                      ),
+                                    ),
+                                  ),
                                 ),
+                          ),
+                        );
+                      },
+                      child: cat.photoUrls.isNotEmpty
+                        ? PageView.builder(
+                            itemCount: cat.photoUrls.length,
+                            itemBuilder: (context, index) {
+                              return Image.network(
+                                cat.photoUrls[index],
+                                fit: BoxFit.cover,
+                              );
+                            },
+                          )
+                        : Container(
+                            color: Colors.grey[300],
+                            width: double.infinity,
+                            child: const Center(
+                              child: Icon(
+                                Icons.pets,
+                                size: 80,
+                                color: Colors.white,
                               ),
                             ),
                           ),
                     ),
-                  );
-                },
-                child: cat.photoUrls.isNotEmpty
-                  ? PageView.builder(
-                      itemCount: cat.photoUrls.length,
-                      itemBuilder: (context, index) {
-                        return Image.network(
-                          cat.photoUrls[index],
-                          fit: BoxFit.cover,
-                        );
-                      },
-                    )
-                  : Container(
-                      color: Colors.grey[300],
-                      width: double.infinity,
-                      child: const Center(
-                        child: Icon(
-                          Icons.pets,
-                          size: 80,
-                          color: Colors.white,
-                        ),
+                  ),
+                  Positioned(
+                    left: 16,
+                    bottom: 16,
+                    child: Text(
+                      cat.name,
+                      style: Theme.of(context).textTheme.headlineMedium?.copyWith(
+                        color: Colors.white,
+                        shadows: [
+                          Shadow(
+                            offset: const Offset(0, 1),
+                            blurRadius: 3.0,
+                            color: Colors.black.withOpacity(0.5),
+                          ),
+                        ],
                       ),
                     ),
+                  ),
+                ],
               ),
             ),
-            Padding(
-              padding: const EdgeInsets.all(16.0),
-              child: Column(
+            const SizedBox(height: 16),
+
+            // Basic Info Container
+            Container(
+              decoration: BoxDecoration(
+                color: Theme.of(context).colorScheme.surfaceVariant,
+                borderRadius: BorderRadius.circular(12),
+              ),
+              padding: const EdgeInsets.all(16),
+              child: Row(
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
-                  Row(
-                    mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                    children: [
-                      Text(
-                        cat.name,
-                        style: Theme.of(context).textTheme.headlineMedium,
-                      ),
-                      if (cat.breedingStatus == BreedingStatus.available)
-                        const Chip(
-                          label: Text('Available for Breeding'),
-                          backgroundColor: Colors.green,
-                          labelStyle: TextStyle(color: Colors.white),
-                        ),
-                    ],
-                  ),
-                  const SizedBox(height: 8),
-                  FutureBuilder<UserModel?>(
-                    future: firestoreService.getUser(cat.ownerId),
-                    builder: (context, snapshot) {
-                      if (!snapshot.hasData) {
-                        return const SizedBox.shrink();
-                      }
-                      final owner = snapshot.data!;
-                      return Text(
-                        'Owner: ${owner.name}',
-                        style: Theme.of(context).textTheme.titleMedium,
-                      );
-                    },
-                  ),
-                  const SizedBox(height: 16),
-                  _buildInfoRow('Breed', cat.breed.toString().split('.').last),
-                  _buildInfoRow('Gender', cat.gender.toString().split('.').last),
-                  _buildInfoRow('Age', _calculateAge(cat.birthDate)),
-                  if (cat.description != null && cat.description!.isNotEmpty)
-                    Column(
-                      crossAxisAlignment: CrossAxisAlignment.start,
-                      children: [
-                        const SizedBox(height: 16),
-                        Text(
-                          'About',
-                          style: Theme.of(context).textTheme.titleLarge,
-                        ),
-                        const SizedBox(height: 8),
-                        Text(cat.description ?? ''),
-                      ],
-                    ),
-                  if (cat.healthRecords.isNotEmpty)
-                    Column(
-                      crossAxisAlignment: CrossAxisAlignment.start,
-                      children: [
-                        const SizedBox(height: 16),
-                        Text(
-                          'Health Records',
-                          style: Theme.of(context).textTheme.titleLarge,
-                        ),
-                        const SizedBox(height: 8),
-                        ...cat.healthRecords.entries.map((entry) {
-                          final date = cat.healthRecordDates[entry.key];
-                          return Card(
-                            child: ListTile(
-                              title: Text(entry.key),
-                              subtitle: Column(
-                                crossAxisAlignment: CrossAxisAlignment.start,
-                                children: [
-                                  if (date != null)
+                  // Owner info
+                  Expanded(
+                    child: FutureBuilder<UserModel?>(
+                      future: firestoreService.getUser(cat.ownerId),
+                      builder: (context, snapshot) {
+                        if (!snapshot.hasData) {
+                          return const SizedBox.shrink();
+                        }
+                        final owner = snapshot.data!;
+                        return InkWell(
+                          onTap: () {
+                            Navigator.push(
+                              context,
+                              MaterialPageRoute(
+                                builder: (context) => ProfileScreen(userId: owner.id),
+                              ),
+                            );
+                          },
+                          child: Row(
+                            children: [
+                              CircleAvatar(
+                                radius: 24,
+                                backgroundImage: owner.photoUrl != null
+                                    ? NetworkImage(owner.photoUrl!)
+                                    : null,
+                                child: owner.photoUrl == null
+                                    ? Text(owner.name[0].toUpperCase())
+                                    : null,
+                              ),
+                              const SizedBox(width: 12),
+                              Expanded(
+                                child: Column(
+                                  crossAxisAlignment: CrossAxisAlignment.start,
+                                  children: [
                                     Text(
-                                      'Date: ${date.day}/${date.month}/${date.year}',
+                                      'Owner',
+                                      style: Theme.of(context).textTheme.labelLarge,
+                                    ),
+                                    Text(
+                                      owner.name,
                                       style: const TextStyle(
                                         fontWeight: FontWeight.bold,
-                                        fontSize: 12,
+                                        fontSize: 16,
                                       ),
                                     ),
-                                  const SizedBox(height: 4),
-                                  Text(entry.value),
-                                ],
+                                    if (owner.location != null)
+                                      Text(
+                                        owner.location!,
+                                        style: Theme.of(context).textTheme.bodyMedium,
+                                      ),
+                                  ],
+                                ),
                               ),
-                            ),
-                          );
-                        }),
+                            ],
+                          ),
+                        );
+                      },
+                    ),
+                  ),
+                  // Action Buttons
+                  if (!isOwner)
+                    Column(
+                      mainAxisSize: MainAxisSize.min,
+                      crossAxisAlignment: CrossAxisAlignment.end,
+                      children: [
+                        if (cat.breedingStatus == BreedingStatus.available)
+                          FilledButton.icon(
+                            onPressed: () => _showBreedingRequestDialog(context),
+                            icon: const Icon(Icons.pets),
+                            label: const Text('Request Breeding'),
+                          ),
+                        if (cat.breedingStatus == BreedingStatus.available)
+                          const SizedBox(height: 8),
+                        OutlinedButton.icon(
+                          onPressed: () {
+                            ScaffoldMessenger.of(context).showSnackBar(
+                              const SnackBar(
+                                content: Text('Feature coming soon!'),
+                              ),
+                            );
+                          },
+                          icon: const Icon(Icons.shopping_cart),
+                          label: const Text('Request to Buy'),
+                        ),
                       ],
                     ),
                 ],
               ),
             ),
+            const SizedBox(height: 16),
+
+            // Essentials Container
+            Container(
+              decoration: BoxDecoration(
+                color: Theme.of(context).colorScheme.surfaceVariant,
+                borderRadius: BorderRadius.circular(12),
+              ),
+              padding: const EdgeInsets.all(16),
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Text(
+                    'Essentials',
+                    style: Theme.of(context).textTheme.titleMedium,
+                  ),
+                  const SizedBox(height: 16),
+                  _buildInfoRow('Breed', cat.breed.toString().split('.').last),
+                  const Padding(
+                    padding: EdgeInsets.symmetric(vertical: 8),
+                    child: Divider(height: 1),
+                  ),
+                  _buildInfoRow('Gender', cat.gender.toString().split('.').last),
+                  const Padding(
+                    padding: EdgeInsets.symmetric(vertical: 8),
+                    child: Divider(height: 1),
+                  ),
+                  _buildInfoRow('Age', _calculateAge(cat.birthDate)),
+                ],
+              ),
+            ),
+            const SizedBox(height: 16),
+
+            // About Me Container
+            if (cat.description != null && cat.description!.isNotEmpty)
+              Container(
+                width: double.infinity,
+                decoration: BoxDecoration(
+                  color: Theme.of(context).colorScheme.surfaceVariant,
+                  borderRadius: BorderRadius.circular(12),
+                ),
+                padding: const EdgeInsets.all(16),
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Text(
+                      'About Me',
+                      style: Theme.of(context).textTheme.titleMedium,
+                    ),
+                    const SizedBox(height: 8),
+                    Text(cat.description ?? ''),
+                  ],
+                ),
+              ),
+            if (cat.description != null && cat.description!.isNotEmpty)
+              const SizedBox(height: 16),
+
+            // Health Records Container (if records exist)
+            if (cat.healthRecords.isNotEmpty)
+              Container(
+                decoration: BoxDecoration(
+                  color: Theme.of(context).colorScheme.surfaceVariant,
+                  borderRadius: BorderRadius.circular(12),
+                ),
+                padding: const EdgeInsets.all(16),
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Text(
+                      'Health Records',
+                      style: Theme.of(context).textTheme.titleMedium,
+                    ),
+                    const SizedBox(height: 8),
+                    ...cat.healthRecords.entries.map((entry) {
+                      final date = cat.healthRecordDates[entry.key];
+                      return Card(
+                        margin: const EdgeInsets.symmetric(vertical: 4),
+                        child: ListTile(
+                          title: Text(entry.key),
+                          subtitle: Column(
+                            crossAxisAlignment: CrossAxisAlignment.start,
+                            children: [
+                              if (date != null)
+                                Text(
+                                  'Date: ${date.day}/${date.month}/${date.year}',
+                                  style: const TextStyle(
+                                    fontWeight: FontWeight.bold,
+                                    fontSize: 12,
+                                  ),
+                                ),
+                              const SizedBox(height: 4),
+                              Text(entry.value),
+                            ],
+                          ),
+                        ),
+                      );
+                    }),
+                  ],
+                ),
+              ),
           ],
         ),
       ),
-      floatingActionButton: !isOwner && cat.breedingStatus == BreedingStatus.available
-          ? FloatingActionButton.extended(
-              onPressed: () {
-                _showBreedingRequestDialog(context);
-              },
-              label: const Text('Request Breeding'),
-              icon: const Icon(Icons.pets),
-            )
-          : null,
+      floatingActionButton: null,
     );
   }
 
   Widget _buildInfoRow(String label, String value) {
-    return Padding(
-      padding: const EdgeInsets.symmetric(vertical: 4.0),
-      child: Row(
-        children: [
-          Text(
-            '$label: ',
-            style: const TextStyle(fontWeight: FontWeight.bold),
-          ),
-          Text(value),
-        ],
-      ),
+    return Row(
+      mainAxisAlignment: MainAxisAlignment.spaceBetween,
+      children: [
+        Text(
+          label,
+          style: const TextStyle(fontWeight: FontWeight.bold),
+        ),
+        Text(value),
+      ],
     );
   }
 
