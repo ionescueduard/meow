@@ -73,7 +73,7 @@ class _BreedingRequestsTabState extends State<BreedingRequestsTab>
   }
 }
 
-class _RequestsList extends StatelessWidget {
+class _RequestsList extends StatefulWidget {
   final Stream<List<BreedingRequest>> stream;
   final bool isReceived;
 
@@ -83,9 +83,19 @@ class _RequestsList extends StatelessWidget {
   });
 
   @override
+  State<_RequestsList> createState() => _RequestsListState();
+}
+
+class _RequestsListState extends State<_RequestsList> with AutomaticKeepAliveClientMixin {
+  @override
+  bool get wantKeepAlive => true;
+
+  @override
   Widget build(BuildContext context) {
+    super.build(context);
+    
     return StreamBuilder<List<BreedingRequest>>(
-      stream: stream,
+      stream: widget.stream,
       builder: (context, snapshot) {
         if (snapshot.connectionState == ConnectionState.waiting) {
           return const Center(child: CircularProgressIndicator());
@@ -99,7 +109,9 @@ class _RequestsList extends StatelessWidget {
         if (requests.isEmpty) {
           return Center(
             child: Text(
-              'No ${isReceived ? 'received' : 'sent'} breeding requests',
+              widget.isReceived
+                  ? 'No breeding requests received'
+                  : 'No breeding requests sent',
             ),
           );
         }
@@ -108,28 +120,14 @@ class _RequestsList extends StatelessWidget {
           itemCount: requests.length,
           itemBuilder: (context, index) {
             final request = requests[index];
-            return _RequestCard(
-              request: request,
-              isReceived: isReceived,
-            );
+            return _buildRequestCard(context, request);
           },
         );
       },
     );
   }
-}
 
-class _RequestCard extends StatelessWidget {
-  final BreedingRequest request;
-  final bool isReceived;
-
-  const _RequestCard({
-    required this.request,
-    required this.isReceived,
-  });
-
-  @override
-  Widget build(BuildContext context) {
+  Widget _buildRequestCard(BuildContext context, BreedingRequest request) {
     final firestoreService = context.read<FirestoreService>();
 
     return Card(
@@ -144,7 +142,7 @@ class _RequestCard extends StatelessWidget {
                 Expanded(
                   child: FutureBuilder<CatModel?>(
                     future: firestoreService.getCat(
-                      isReceived ? request.requesterCatId : request.catId,
+                      widget.isReceived ? request.requesterCatId : request.catId,
                     ),
                     builder: (context, snapshot) {
                       if (!snapshot.hasData) {
@@ -179,7 +177,7 @@ class _RequestCard extends StatelessWidget {
                 Expanded(
                   child: FutureBuilder<CatModel?>(
                     future: firestoreService.getCat(
-                      isReceived ? request.catId : request.requesterCatId,
+                      widget.isReceived ? request.catId : request.requesterCatId,
                     ),
                     builder: (context, snapshot) {
                       if (!snapshot.hasData) {
@@ -224,7 +222,7 @@ class _RequestCard extends StatelessWidget {
                     color: _getStatusColor(request.status),
                   ),
             ),
-            if (isReceived && request.status == 'pending')
+            if (widget.isReceived && request.status == 'pending')
               Row(
                 mainAxisAlignment: MainAxisAlignment.end,
                 children: [

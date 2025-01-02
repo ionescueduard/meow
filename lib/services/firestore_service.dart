@@ -121,35 +121,35 @@ class FirestoreService {
     if (location != null) {
       print('Searching by location not yet implemented');
 
-    //import 'package:geolocator/geolocator.dart';
-    // return query.snapshots().map((snapshot) {
-    //   final cats = snapshot.docs
-    //       .map((doc) => CatModel.fromMap(doc.data() as Map<String, dynamic>))
-    //       .toList();
+      //import 'package:geolocator/geolocator.dart';
+      // return query.snapshots().map((snapshot) {
+      //   final cats = snapshot.docs
+      //       .map((doc) => CatModel.fromMap(doc.data() as Map<String, dynamic>))
+      //       .toList();
 
-    //   if (location != null) {
-    //     final userLat = location['latitude'] as double;
-    //     final userLng = location['longitude'] as double;
-    //     final maxDistance = location['maxDistance'] as double;
+      //   if (location != null) {
+      //     final userLat = location['latitude'] as double;
+      //     final userLng = location['longitude'] as double;
+      //     final maxDistance = location['maxDistance'] as double;
 
-    //     // Filter cats by distance
-    //     return cats.where((cat) {
-    //       if (cat.location == null) return false;
+      //     // Filter cats by distance
+      //     return cats.where((cat) {
+      //       if (cat.location == null) return false;
 
-    //       final distance = Geolocator.distanceBetween(
-    //         userLat,
-    //         userLng,
-    //         cat.location!.latitude,
-    //         cat.location!.longitude,
-    //       );
+      //       final distance = Geolocator.distanceBetween(
+      //         userLat,
+      //         userLng,
+      //         cat.location!.latitude,
+      //         cat.location!.longitude,
+      //       );
 
-    //       // Convert distance from meters to kilometers
-    //       return distance / 1000 <= maxDistance;
-    //     }).toList();
-    //   }
+      //       // Convert distance from meters to kilometers
+      //       return distance / 1000 <= maxDistance;
+      //     }).toList();
+      //   }
 
-    //   return cats;
-    // });
+      //   return cats;
+      // });
     }
 
     return query.snapshots().map((snapshot) {
