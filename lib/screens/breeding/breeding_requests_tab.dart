@@ -5,7 +5,9 @@ import '../../models/user_model.dart';
 import '../../models/breeding_request_model.dart';
 import '../../services/firestore_service.dart';
 import '../../services/auth_service.dart';
+import '../../services/chat_service.dart';
 import '../cat/cat_details_screen.dart';
+import '../chat/chat_detail_screen.dart';
 
 class BreedingRequestsTab extends StatefulWidget {
   const BreedingRequestsTab({super.key});
@@ -246,6 +248,46 @@ class _RequestsListState extends State<_RequestsList> with AutomaticKeepAliveCli
                     child: const Text('Accept'),
                   ),
                 ],
+              ),
+            if (request.status == 'accepted')
+              FutureBuilder<UserModel?>(
+                future: firestoreService.getUser(
+                  widget.isReceived ? request.requesterId : request.receiverId,
+                ),
+                builder: (context, snapshot) {
+                  if (!snapshot.hasData) return const SizedBox.shrink();
+                  final otherUser = snapshot.data!;
+                  
+                  return Row(
+                    mainAxisAlignment: MainAxisAlignment.end,
+                    children: [
+                      ElevatedButton.icon(
+                        icon: const Icon(Icons.chat),
+                        label: const Text('Start Chat'),
+                        onPressed: () async {
+                          final currentUser = context.read<AuthService>().currentUser;
+                          if (currentUser == null) return;
+
+                          final chatRoom = await context.read<ChatService>().getChatRoom(
+                            participantIds: [currentUser.uid, otherUser.id],
+                          );
+
+                          if (chatRoom != null && context.mounted) {
+                            Navigator.push(
+                              context,
+                              MaterialPageRoute(
+                                builder: (context) => ChatDetailScreen(
+                                  chatRoom: chatRoom,
+                                  otherUser: otherUser,
+                                ),
+                              ),
+                            );
+                          }
+                        },
+                      ),
+                    ],
+                  );
+                },
               ),
           ],
         ),

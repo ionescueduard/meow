@@ -491,6 +491,10 @@ class FirestoreService {
     required String requestMessage,
     required String requesterCatId,
   }) async {
+    // Get the cat owner's ID first
+    final cat = await getCat(catId);
+    if (cat == null) return;
+
     final batch = _db.batch();
     final requestId = _db.collection('breedingRequests').doc().id;
 
@@ -499,6 +503,7 @@ class FirestoreService {
       'catId': catId,
       'requesterId': requesterId,
       'requesterCatId': requesterCatId,
+      'receiverId': cat.ownerId,  // Set receiverId from cat's owner
       'message': requestMessage,
       'status': 'pending',
       'createdAt': FieldValue.serverTimestamp(),
@@ -511,17 +516,14 @@ class FirestoreService {
 
     await batch.commit();
 
-    // Get the cat owner's ID to send notification
-    final cat = await getCat(catId);
-    if (cat != null) {
-      final requester = await getUser(requesterId);
-      if (requester != null) {
-        await _notificationService.sendBreedingRequestNotification(
-          userId: cat.ownerId,
-          catId: catId,
-          requester: requester,
-        );
-      }
+    // Send notification
+    final requester = await getUser(requesterId);
+    if (requester != null) {
+      await _notificationService.sendBreedingRequestNotification(
+        userId: cat.ownerId,
+        catId: catId,
+        requester: requester,
+      );
     }
   }
 

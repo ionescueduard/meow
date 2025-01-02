@@ -5,6 +5,7 @@ class BreedingRequest {
   final String catId;
   final String requesterId;
   final String requesterCatId;
+  final String receiverId;
   final String message;
   final String status;
   final DateTime createdAt;
@@ -14,6 +15,7 @@ class BreedingRequest {
     required this.catId,
     required this.requesterId,
     required this.requesterCatId,
+    required this.receiverId,
     required this.message,
     required this.status,
     required this.createdAt,
@@ -25,6 +27,7 @@ class BreedingRequest {
       catId: map['catId'] as String,
       requesterId: map['requesterId'] as String,
       requesterCatId: map['requesterCatId'] as String,
+      receiverId: map['receiverId'] as String,
       message: map['message'] as String,
       status: map['status'] as String,
       createdAt: (map['createdAt'] as Timestamp).toDate(),
@@ -36,6 +39,7 @@ class BreedingRequest {
       'catId': catId,
       'requesterId': requesterId,
       'requesterCatId': requesterCatId,
+      'receiverId': receiverId,
       'message': message,
       'status': status,
       'createdAt': Timestamp.fromDate(createdAt),
@@ -47,6 +51,7 @@ class BreedingRequest {
     String? catId,
     String? requesterId,
     String? requesterCatId,
+    String? receiverId,
     String? message,
     String? status,
     DateTime? createdAt,
@@ -56,6 +61,7 @@ class BreedingRequest {
       catId: catId ?? this.catId,
       requesterId: requesterId ?? this.requesterId,
       requesterCatId: requesterCatId ?? this.requesterCatId,
+      receiverId: receiverId ?? this.receiverId,
       message: message ?? this.message,
       status: status ?? this.status,
       createdAt: createdAt ?? this.createdAt,
